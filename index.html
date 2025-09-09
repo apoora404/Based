@@ -131,6 +131,9 @@
       <aside class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
         <h3 class="font-semibold">결과</h3>
         <div id="out" class="space-y-2"></div>
+        <div class="mt-3 flex gap-2">
+          <button id="calcFloating" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium">계산하기</button>
+        </div>
         <div class="text-xs text-slate-500">※ 평균 수수료 = (Maker×비중 + Taker×비중). <b>기본은 Maker만</b>으로 계산하고, 실제 수수료/추천인 수익을 입력하면 <b>Taker 비중/건수</b>를 역산해 표시합니다.</div>
       </aside>
     </section>
@@ -206,7 +209,9 @@
 
       const rows = [];
       rows.push(`<div class='bg-slate-950/60 p-3 rounded-xl border border-slate-800 num'>
-        <div class='text-[11px] text-slate-400'>획득 포인트</div><div class='text-xl'>${d2(pts)}</div></div>`);
+        <div class='text-[11px] text-slate-400'>획득 포인트</div><div class='text-xl'>${d2(pts)}</div>
+        <div class='text-[11px] text-slate-400 mt-1'>XP 효율(프리셋): ${d4(xpPerDollar)} XP/$</div>
+      </div>`);
       rows.push(`<div class='bg-slate-950/60 p-3 rounded-xl border border-slate-800 num'>
         <div class='text-[11px] text-slate-400'>총 거래량</div><div class='text-xl'>${d2(volume)} $</div>
         ${volFromPts && volIn ? `<div class='text-[11px] text-slate-400 mt-1'>포인트 역산 거래량: ${d2(volFromPts)} $</div>`:''}
@@ -250,6 +255,11 @@
     $('marketKind').addEventListener('change', updateXpEfficiency);
     $('tier14').addEventListener('change', applyTierPreset);
     $('calc').addEventListener('click', compute);
+    $('calcFloating').addEventListener('click', compute);
+    // Enter 키로도 계산
+    ['volume','prevPts','currPts','feePaid','refRev','refShare','avgFill'].forEach(id=>{
+      const el = $(id); if(!el) return; el.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ compute(); }});
+    });
     $('save').addEventListener('click', saveInputs);
     $('reset').addEventListener('click', ()=>{ localStorage.removeItem('xp-fee-calc'); location.reload(); });
 
