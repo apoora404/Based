@@ -15,10 +15,9 @@
   <header class="max-w-5xl mx-auto px-4 py-6">
     <div class="flex items-center justify-between gap-3">
       <h1 class="text-xl sm:text-2xl font-semibold">XP 효율 · 수수료 계산기</h1>
-      <div class="text-xs sm:text-sm text-slate-400">v1.2 · 단일 파일 · 오프라인 동작 · 자동 저장(localStorage)</div>
+      <div class="text-xs sm:text-sm text-slate-400">v1.3 · 단일 파일 · 오프라인 동작 · 자동 저장(localStorage)</div>
     </div>
-    <p class="mt-2 text-slate-400 text-sm">현물/선물, XP 부스트(0/25/50/60), Perps fee tiers 프리셋(Base/Diamond/Platinum, 0~6), 메이커/테이커 비율, 포인트(현재/이전) 입력을 조합해
-      <span class="whitespace-nowrap">획득 포인트 · 총 거래량 · 총 수수료 · 1 XP당 거래량</span>을 계산합니다.</p>
+    <p class="mt-2 text-slate-400 text-sm">요청 반영: Taker 슬라이더 제거, 수수료 클래스/티어 제거 → <b>Base</b> 고정 + <b>14일 볼륨 티어</b> 선택. 입력모드 분리 없이 <b>거래량/포인트 둘 다 입력 가능</b>.</p>
   </header>
 
   <main class="max-w-5xl mx-auto px-4 pb-28 space-y-5">
@@ -52,97 +51,106 @@
           </div>
         </div>
 
-        <!-- Perps fee tiers (optional) + manual override  -->
+        <!-- Fees (Base only) & boost -->
+    <section class="grid md:grid-cols-3 gap-4">
+      <div class="md:col-span-2 space-y-4">
         <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="font-semibold">수수료 선택 (Perps 표 프리셋 · 선택 시 자동 반영)</h3>
-            <div class="text-xs text-slate-400">표를 선택하지 않으면 아래 수수료율 입력값을 사용</div>
-          </div>
-          <div class="grid sm:grid-cols-4 gap-3">
+          <div class="grid sm:grid-cols-3 gap-3">
             <label class="block">
-              <span class="block text-xs text-slate-400">클래스</span>
-              <select id="tierClass" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
-                <option value="none" selected>선택 안 함</option>
-                <option value="Base">Base</option>
-                <option value="Diamond">Diamond</option>
-                <option value="Platinum">Platinum</option>
+              <span class="block text-xs text-slate-400">거래 방식</span>
+              <select id="marketKind" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
+                <option value="perps" selected>선물(Perps)</option>
+                <option value="spot">현물(Spot)</option>
               </select>
             </label>
             <label class="block">
-              <span class="block text-xs text-slate-400">Tier</span>
-              <select id="tier" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-                <option value="6">6</option>
+              <span class="block text-xs text-slate-400">XP 부스트</span>
+              <select id="xpBoost" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
+                <option value="0">0%</option>
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+                <option value="60" selected>60%</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="block text-xs text-slate-400">XP 효율 (XP/$)</span>
+              <input id="xpPerDollar" type="number" step="0.00001" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+              <span class="text-[11px] text-slate-500">프리셋 자동 계산, 필요시 직접 수정 가능</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold">수수료 선택 (Base 고정)</h3>
+            <div class="text-xs text-slate-400">14일 가중 거래량으로 티어 선택</div>
+          </div>
+          <div class="grid sm:grid-cols-4 gap-3">
+            <label class="block col-span-2">
+              <span class="block text-xs text-slate-400">14일 가중 거래량 티어</span>
+              <select id="tier14" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
+                <option value="0">Tier 0 (기본)</option>
+                <option value="1">Tier 1 (> $5M)</option>
+                <option value="2">Tier 2 (> $25M)</option>
+                <option value="3">Tier 3 (> $100M)</option>
+                <option value="4">Tier 4 (> $500M)</option>
+                <option value="5">Tier 5 (> $2B)</option>
+                <option value="6">Tier 6 (> $7B)</option>
               </select>
             </label>
             <label class="block">
               <span class="block text-xs text-slate-400">Taker 수수료율(%)</span>
               <input id="takerFee" type="number" step="0.0001" value="0.045" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+              <span class="text-[11px] text-slate-500">티어 선택 시 자동 반영</span>
             </label>
             <label class="block">
-              <span class="block text-xs text-slate-400">Maker 수수료율(%) <span class="text-slate-500">(리베이트는 음수)</span></span>
+              <span class="block text-xs text-slate-400">Maker 수수료율(%)</span>
               <input id="makerFee" type="number" step="0.0001" value="0.015" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
             </label>
           </div>
-          <div class="grid sm:grid-cols-3 gap-3 mt-3">
-            <label class="block col-span-2">
-              <span class="block text-xs text-slate-400">Taker 비율</span>
-              <input id="takerRatio" type="range" min="0" max="100" value="28" class="w-full" />
-              <div class="text-xs text-slate-400"><span id="takerRatioLbl">28</span>% (Maker <span id="makerRatioLbl">72</span>%)</div>
-            </label>
-            <label class="block">
-              <span class="block text-xs text-slate-400">추천인 배분율 r(%)</span>
-              <input id="refShare" type="number" step="0.1" value="60" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-            </label>
-          </div>
         </div>
 
-        <!-- Inputs: volume or points -->
+        <!-- Inputs: both available -->
         <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
           <div class="grid sm:grid-cols-3 gap-3">
             <label class="block">
-              <span class="block text-xs text-slate-400">입력 모드</span>
-              <select id="mode" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
-                <option value="volume">거래량 입력</option>
-                <option value="points">포인트(현재/이전)로 거래량 역산</option>
-              </select>
-            </label>
-            <label class="block" id="volumeBox">
               <span class="block text-xs text-slate-400">총 거래량 ($)</span>
-              <input id="volume" type="number" step="0.01" value="82881.86" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+              <input id="volume" type="number" step="0.01" value="" placeholder="예: 82881.86" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
             </label>
-            <div id="pointsBox" class="grid grid-cols-2 gap-3 hidden">
+            <label class="block">
+              <span class="block text-xs text-slate-400">이전 포인트</span>
+              <input id="prevPts" type="number" step="0.01" placeholder="선택" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+            </label>
+            <label class="block">
+              <span class="block text-xs text-slate-400">현재 포인트</span>
+              <input id="currPts" type="number" step="0.01" placeholder="선택" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+            </label>
+          </div>
+
+          <details class="mt-3 text-sm text-slate-300">
+            <summary class="cursor-pointer select-none">고급 옵션(선택): 실제 납부 수수료 / 추천인 수익으로 Taker 비율 역산</summary>
+            <div class="grid sm:grid-cols-4 gap-3 mt-2">
               <label class="block">
-                <span class="block text-xs text-slate-400">이전 포인트</span>
-                <input id="prevPts" type="number" step="0.01" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+                <span class="block text-xs text-slate-400">실제 납부 수수료($)</span>
+                <input id="feePaid" type="number" step="0.01" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
               </label>
               <label class="block">
-                <span class="block text-xs text-slate-400">현재 포인트</span>
-                <input id="currPts" type="number" step="0.01" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+                <span class="block text-xs text-slate-400">추천인 수익($)</span>
+                <input id="refRev" type="number" step="0.01" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+              </label>
+              <label class="block">
+                <span class="block text-xs text-slate-400">추천인 배분율 r(%)</span>
+                <input id="refShare" type="number" step="0.1" value="60" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
+              </label>
+              <label class="block">
+                <span class="block text-xs text-slate-400">평균 1회 체결 금액($, 선택)</span>
+                <input id="avgFill" type="number" step="0.01" placeholder="예: 3,000" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
               </label>
             </div>
-          </div>
-          <div class="flex gap-2 mt-4">
-            <button id="calc" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium">계산하기</button>
-            <button id="save" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">입력값 저장</button>
-            <button id="reset" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">초기화</button>
-          </div>
-        </div>
-      </div>
+          </details>
 
-      <!-- Output -->
-      <aside class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 class="font-semibold">결과</h3>
-        <div id="out" class="space-y-2"></div>
-        <div class="text-xs text-slate-500">※ 수수료는 (Taker%×Taker율 + Maker%×Maker율) 평균으로 계산합니다.
-          거래소·계정 등급·리베이트에 따라 실제와 약간 차이 날 수 있습니다.</div>
-      </aside>
-    </section>
+          <div class="flex gap-2 mt-4">
+            <butto
 
     <section class="text-xs text-slate-500">
       <p>저장 방식: 브라우저 <b>localStorage</b> 사용(쿠키 불필요). 장치/브라우저를 바꾸면 동기화되지 않습니다. 여러 장치에서 동기화하려면 서버 저장이 필요합니다.</p>
@@ -169,21 +177,7 @@
       const kind = $('marketKind').value;  // perps | spot
       const boost = $('xpBoost').value;    // 0/25/50/60
       const base = XP_BASE[kind] || 0.03375;
-      const factor = BOOST_FACTOR[boost] || 1;
-      $('xpPerDollar').value = (base * factor).toFixed(5);
-    }
-
-    function applyTierPreset(){
-      const cls = $('tierClass').value; if(cls==='none') return;
-      const tier = Number($('tier').value||0);
-      const row = TIERS[cls] && TIERS[cls][tier];
-      if(row){ $('takerFee').value = row.t; $('makerFee').value = row.m; }
-    }
-
-    function toggleMode(){
-      const m = $('mode').value;
-      $('volumeBox').classList.toggle('hidden', m!=="volume");
-      $('pointsBox').classList.toggle('hidden', m!=="points");
+      constsList.toggle('hidden', m!=="points");
     }
 
     function compute(){
@@ -197,24 +191,14 @@
       let volume = 0, gainedXP = 0;
       if($('mode').value === 'volume'){
         volume = Number($('volume').value||0);
-        gainedXP = volume * xpPerDollar;
-      } else {
-        const prev = Number($('prevPts').value||0);
-        const curr = Number($('currPts').value||0);
-        gainedXP = Math.max(0, curr - prev);
-        volume = gainedXP / (xpPerDollar||1);
-        $('volume').value = volume.toFixed(2);
+        gainedXP = v.toFixed(2);
       }
 
       const feeGross = volume * avgFee; // 총 수수료(달러)
 
       // 출력
       const d2 = n=> Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
-      const d4 = n=> Number(n).toLocaleString(undefined,{minimumFractionDigits:4, maximumFractionDigits:4});
-
-      $('out').innerHTML = `
-        <div class="space-y-2 num">
-          <div class="grid grid-cols-2 gap-2">
+      co"grid grid-cols-2 gap-2">
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800"><div class="text-[11px] text-slate-400">획득 포인트</div><div class="text-xl">${d2(gainedXP)}</div></div>
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800"><div class="text-[11px] text-slate-400">총 거래량</div><div class="text-xl">${d2(volume)} $</div></div>
           </div>
