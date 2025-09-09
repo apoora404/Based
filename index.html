@@ -21,39 +21,9 @@
   </header>
 
   <main class="max-w-5xl mx-auto px-4 pb-28 space-y-5">
-    <!-- Controls -->
     <section class="grid md:grid-cols-3 gap-4">
       <div class="md:col-span-2 space-y-4">
-        <!-- Trading mode / XP boost -->
-        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
-          <div class="grid sm:grid-cols-3 gap-3">
-            <label class="block">
-              <span class="block text-xs text-slate-400">거래 방식</span>
-              <select id="marketKind" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
-                <option value="perps">선물(Perps)</option>
-                <option value="spot">현물(Spot)</option>
-              </select>
-            </label>
-            <label class="block">
-              <span class="block text-xs text-slate-400">XP 부스트</span>
-              <select id="xpBoost" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2">
-                <option value="0">0%</option>
-                <option value="25">25%</option>
-                <option value="50">50%</option>
-                <option value="60" selected>60%</option>
-              </select>
-            </label>
-            <label class="block">
-              <span class="block text-xs text-slate-400">XP 효율 (XP / $)</span>
-              <input id="xpPerDollar" type="number" step="0.00001" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-              <span class="text-[11px] text-slate-500">프리셋 자동 계산, 필요시 직접 수정 가능</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Fees (Base only) & boost -->
-    <section class="grid md:grid-cols-3 gap-4">
-      <div class="md:col-span-2 space-y-4">
+        <!-- 거래 방식 & 부스트 -->
         <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
           <div class="grid sm:grid-cols-3 gap-3">
             <label class="block">
@@ -80,10 +50,11 @@
           </div>
         </div>
 
+        <!-- Base 수수료 & 14일 티어 -->
         <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-semibold">수수료 선택 (Base 고정)</h3>
-            <div class="text-xs text-slate-400">14일 가중 거래량으로 티어 선택</div>
+            <div class="text-xs text-slate-400">14일 가중 거래량 티어를 선택하세요</div>
           </div>
           <div class="grid sm:grid-cols-4 gap-3">
             <label class="block col-span-2">
@@ -110,7 +81,7 @@
           </div>
         </div>
 
-        <!-- Inputs: both available -->
+        <!-- 입력 (동시 입력 가능) -->
         <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
           <div class="grid sm:grid-cols-3 gap-3">
             <label class="block">
@@ -150,10 +121,22 @@
           </details>
 
           <div class="flex gap-2 mt-4">
-            <butto
+            <button id="calc" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium">계산하기</button>
+            <button id="save" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">입력값 저장</button>
+            <button id="reset" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">초기화</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <h3 class="font-semibold">결과</h3>
+        <div id="out" class="space-y-2"></div>
+        <div class="text-xs text-slate-500">※ 평균 수수료 = (Maker×비중 + Taker×비중). <b>기본은 Maker만</b>으로 계산하고, 실제 수수료/추천인 수익을 입력하면 <b>Taker 비중/건수</b>를 역산해 표시합니다.</div>
+      </aside>
+    </section>
 
     <section class="text-xs text-slate-500">
-      <p>저장 방식: 브라우저 <b>localStorage</b> 사용(쿠키 불필요). 장치/브라우저를 바꾸면 동기화되지 않습니다. 여러 장치에서 동기화하려면 서버 저장이 필요합니다.</p>
+      <p>저장 방식: 브라우저 <b>localStorage</b> 사용(쿠키 불필요). 장치/브라우저를 바꾸면 동기화되지 않습니다.</p>
     </section>
   </main>
 
@@ -164,12 +147,8 @@
     const XP_BASE = { perps: 0.03375, spot: 0.1266 };
     const BOOST_FACTOR = {0:1, 25:1.25, 50:1.5, 60:1.6};
 
-    // === Perps fee tiers ===
-    const TIERS = {
-      Base:  {0:{t:0.045,m:0.015},1:{t:0.040,m:0.012},2:{t:0.035,m:0.008},3:{t:0.030,m:0.004},4:{t:0.028,m:0.000},5:{t:0.026,m:0.000},6:{t:0.024,m:0.000}},
-      Diamond:{0:{t:0.0270,m:0.0090},1:{t:0.0240,m:0.0072},2:{t:0.0210,m:0.0048},3:{t:0.0180,m:0.0024},4:{t:0.0168,m:0.0000},5:{t:0.0156,m:0.0000},6:{t:0.0144,m:0.0000}},
-      Platinum:{0:{t:0.0315,m:0.0105},1:{t:0.0280,m:0.00849},2:{t:0.0245,m:0.00569},3:{t:0.0210,m:0.00289},4:{t:0.0196,m:0.00009},5:{t:0.0182,m:0.00009},6:{t:0.0168,m:0.00009}}
-    };
+    // === Base perps fee tiers (14d volume) ===
+    const TIERS = {0:{t:0.045,m:0.015},1:{t:0.040,m:0.012},2:{t:0.035,m:0.008},3:{t:0.030,m:0.004},4:{t:0.028,m:0.000},5:{t:0.026,m:0.000},6:{t:0.024,m:0.000}};
 
     const $ = id => document.getElementById(id);
 
@@ -177,69 +156,106 @@
       const kind = $('marketKind').value;  // perps | spot
       const boost = $('xpBoost').value;    // 0/25/50/60
       const base = XP_BASE[kind] || 0.03375;
-      constsList.toggle('hidden', m!=="points");
+      const factor = BOOST_FACTOR[boost] || 1;
+      $('xpPerDollar').value = (base * factor).toFixed(5);
+    }
+
+    function applyTierPreset(){
+      const t = Number($('tier14').value||0);
+      const row = TIERS[t]; if(!row) return;
+      $('takerFee').value = row.t; $('makerFee').value = row.m;
     }
 
     function compute(){
-      const takerRatio = Number($('takerRatio').value)/100;
-      const makerRatio = 1 - takerRatio;
+      const xpPerDollar = Number($('xpPerDollar').value||0);
       const takerFee = Number($('takerFee').value)/100; // % → 1기준
       const makerFee = Number($('makerFee').value)/100;
-      const avgFee = takerRatio*takerFee + makerRatio*makerFee;
-      const xpPerDollar = Number($('xpPerDollar').value);
 
-      let volume = 0, gainedXP = 0;
-      if($('mode').value === 'volume'){
-        volume = Number($('volume').value||0);
-        gainedXP = v.toFixed(2);
+      const volIn = Number($('volume').value||0);
+      const prev = Number($('prevPts').value||0);
+      const curr = Number($('currPts').value||0);
+      const pts = (curr && prev) ? Math.max(0, curr - prev) : 0;
+
+      // 포인트로 역산한 거래량
+      const volFromPts = (pts>0 && xpPerDollar>0) ? (pts / xpPerDollar) : 0;
+
+      // 입력된 거래량이 우선, 없으면 포인트로 역산
+      const volume = volIn || volFromPts;
+
+      // Maker-only / Taker-only 수수료 범위
+      const feeMakerOnly = volume * makerFee;
+      const feeTakerOnly = volume * takerFee;
+
+      // 실제 수수료/추천인 수익 기반 역산
+      let feePaid = Number($('feePaid').value||0);
+      const refRev = Number($('refRev').value||0);
+      const refShare = Number($('refShare').value||0)/100;
+      if(!feePaid && refRev && refShare>0){ feePaid = refRev / refShare; }
+
+      let takerRatio=null, estTakerFills=null;
+      if(feePaid && volume>0){
+        const avgFee = feePaid / volume;                     // 실측 평균 수수료율
+        const denom = (takerFee - makerFee);
+        takerRatio = denom>0 ? Math.min(1, Math.max(0, (avgFee - makerFee)/denom)) : 0;
+        const avgFill = Number($('avgFill').value||0);
+        if(avgFill>0){ estTakerFills = Math.round((volume * takerRatio) / avgFill); }
       }
 
-      const feeGross = volume * avgFee; // 총 수수료(달러)
-
-      // 출력
       const d2 = n=> Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
-      co"grid grid-cols-2 gap-2">
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800"><div class="text-[11px] text-slate-400">획득 포인트</div><div class="text-xl">${d2(gainedXP)}</div></div>
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800"><div class="text-[11px] text-slate-400">총 거래량</div><div class="text-xl">${d2(volume)} $</div></div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800"><div class="text-[11px] text-slate-400">총 수수료(평균)</div><div class="text-xl">${d2(feeGross)} $</div><div class="text-[11px] text-slate-400">(Taker ${d4(takerFee*100)}% × ${d4(takerRatio*100)}% + Maker ${d4(makerFee*100)}% × ${d4(makerRatio*100)}%)</div></div>
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800"><div class="text-[11px] text-slate-400">1 XP 당 거래량</div><div class="text-xl">${gainedXP>0? d4(volume/gainedXP): '—'} $/XP</div></div>
-          </div>
-        </div>`;
+      const d4 = n=> Number(n).toLocaleString(undefined,{minimumFractionDigits:4, maximumFractionDigits:4});
+
+      const rows = [];
+      rows.push(`<div class='bg-slate-950/60 p-3 rounded-xl border border-slate-800 num'>
+        <div class='text-[11px] text-slate-400'>획득 포인트</div><div class='text-xl'>${d2(pts)}</div></div>`);
+      rows.push(`<div class='bg-slate-950/60 p-3 rounded-xl border border-slate-800 num'>
+        <div class='text-[11px] text-slate-400'>총 거래량</div><div class='text-xl'>${d2(volume)} $</div>
+        ${volFromPts && volIn ? `<div class='text-[11px] text-slate-400 mt-1'>포인트 역산 거래량: ${d2(volFromPts)} $</div>`:''}
+      </div>`);
+      rows.push(`<div class='bg-slate-950/60 p-3 rounded-xl border border-slate-800 num'>
+        <div class='text-[11px] text-slate-400'>총 수수료(추정)</div><div class='text-xl'>Maker만: ${d2(feeMakerOnly)} $ · Taker만: ${d2(feeTakerOnly)} $</div>
+        <div class='text-[11px] text-slate-400 mt-1'>1 XP당 거래량: ${pts>0? d4(volume/pts): '—'} $/XP</div>
+      </div>`);
+
+      if(takerRatio!==null){
+        rows.push(`<div class='bg-slate-950/60 p-3 rounded-xl border border-slate-800 num'>
+          <div class='text-[11px] text-slate-400'>실제 수수료 기반 추정</div>
+          <div>평균 수수료율: ${d4((feePaid/volume)*100)} %</div>
+          <div>추정 Taker 비중: ${d4(takerRatio*100)} %</div>
+          ${estTakerFills!==null? `<div>추정 Taker 체결 건수: ~${estTakerFills} 건 (평균 체결 ${d2(Number($('avgFill').value||0))} $ 가정)</div>`:''}
+        </div>`);
+      } else {
+        rows.push(`<div class='text-xs text-slate-500'>실제 납부 수수료나 추천인 수익을 입력하면 Taker 비중/건수를 역산해 드릴게요.</div>`);
+      }
+
+      $('out').innerHTML = `<div class='grid grid-cols-1 gap-2'>${rows.join('')}</div>`;
     }
 
     function saveInputs(){
-      const keys = ['marketKind','xpBoost','xpPerDollar','tierClass','tier','takerFee','makerFee','takerRatio','refShare','mode','volume','prevPts','currPts'];
+      const keys = ['marketKind','xpBoost','xpPerDollar','tier14','takerFee','makerFee','volume','prevPts','currPts','feePaid','refRev','refShare','avgFill'];
       const obj = {}; keys.forEach(k=> obj[k] = $(k).value);
       localStorage.setItem('xp-fee-calc', JSON.stringify(obj));
       const btn = $('save'); btn.textContent = '저장됨'; setTimeout(()=>btn.textContent='입력값 저장', 1200);
     }
 
     function loadInputs(){
-      const raw = localStorage.getItem('xp-fee-calc'); if(!raw){ updateXpEfficiency(); return; }
-      try{
-        const obj = JSON.parse(raw);
-        Object.keys(obj).forEach(k=> { if($(k)) $(k).value = obj[k]; });
-      }catch{}
-      $('takerRatioLbl').textContent = $('takerRatio').value; $('makerRatioLbl').textContent = 100-Number($('takerRatio').value);
-      updateXpEfficiency(); applyTierPreset(); toggleMode(); compute();
+      const raw = localStorage.getItem('xp-fee-calc');
+      updateXpEfficiency();
+      if(!raw){ applyTierPreset(); return; }
+      try{ const obj = JSON.parse(raw); Object.keys(obj).forEach(k=> { if($(k)) $(k).value = obj[k]; }); }catch{}
+      applyTierPreset();
     }
 
-    // UI events
-    $('xpBoost').addEventListener('change', ()=>{ updateXpEfficiency(); });
-    $('marketKind').addEventListener('change', ()=>{ updateXpEfficiency(); });
-    $('tierClass').addEventListener('change', ()=>{ applyTierPreset(); });
-    $('tier').addEventListener('change', ()=>{ applyTierPreset(); });
-    $('takerRatio').addEventListener('input', ()=>{ $('takerRatioLbl').textContent = $('takerRatio').value; $('makerRatioLbl').textContent = 100-Number($('takerRatio').value); });
-    $('mode').addEventListener('change', ()=>{ toggleMode(); });
+    // 이벤트 바인딩
+    $('xpBoost').addEventListener('change', updateXpEfficiency);
+    $('marketKind').addEventListener('change', updateXpEfficiency);
+    $('tier14').addEventListener('change', applyTierPreset);
     $('calc').addEventListener('click', compute);
     $('save').addEventListener('click', saveInputs);
     $('reset').addEventListener('click', ()=>{ localStorage.removeItem('xp-fee-calc'); location.reload(); });
 
     // init
-    updateXpEfficiency();
     loadInputs();
+    compute();
   </script>
 </body>
 </html>
