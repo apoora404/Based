@@ -8,12 +8,12 @@
   <style>
     :root{
       color-scheme: dark light;
-      --bg:#0f1012;           /* 다크 배경 */
-      --panel:#17181c;        /* 카드 배경 */
-      --muted:#9aa4af;        /* 보조 텍스트 */
-      --accent:#ff6a3d;       /* 포인트 오렌지 */
-      --ok:#2ad7a3;           /* 포인트 그린 */
-      --danger:#ff6b6b;       /* 포인트 레드 */
+      --bg:#0f1012;
+      --panel:#17181c;
+      --muted:#9aa4af;
+      --accent:#ff6a3d;
+      --ok:#2ad7a3;
+      --danger:#ff6b6b;
       --ring: 0 0 0 3px rgba(255,106,61,.35);
     }
     body{background:var(--bg); color:#e6e8ea;}
@@ -44,7 +44,7 @@
     <p class="mt-3 muted text-sm">
       이전/현재 누적 거래량·포인트로 <b>사용 구간</b>을 계산하고, <b>Tier별 수수료</b>를 반영해
       <b>총 수수료·셀프레퍼럴(60%)·XP 효율·XP당 단가</b>를 구합니다.
-      (고급 옵션에 <b>총 수수료 / 실제 낸 수수료</b>를 입력하면 평균 수수료율과 <i>Taker 비중</i>을 역산합니다)
+      (고급 옵션에 <b>총 수수료 / 실제 낸 수수료</b>를 입력하면 평균 수수료율과 <i>Taker 비중</i>을 역산)
     </p>
   </header>
 
@@ -134,6 +134,7 @@
         <h3 class="font-semibold text-lg">결과</h3>
         <span class="badge text-xs" id="modeBadge">Perps · Tier 0</span>
         <span class="badge text-xs" id="feeBadge">Maker/Taker: -</span>
+        <button id="copy" class="btn-ghost px-3 py-1.5 rounded-lg text-sm ml-auto">복사</button>
       </div>
       <div id="out" class="space-y-2"></div>
       <p class="text-[11px] muted">
@@ -144,10 +145,9 @@
   </main>
 
   <script>
-    // --- 수수료 테이블 (퍼센트 → 소수 변환해서 사용)
+    // --- 수수료 테이블 (퍼센트 → 소수)
     const FEES = {
       perps: {
-        // Base rate (티어 0~6): taker / maker
         tiers: [
           { name: "Tier 0 (기본)", taker: 0.00045, maker: 0.00015 },
           { name: "Tier 1 (>5M)", taker: 0.00040, maker: 0.00012 },
@@ -202,6 +202,9 @@
     const d2 = (n)=> Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
     const d4 = (n)=> Number(n||0).toLocaleString(undefined,{minimumFractionDigits:4,maximumFractionDigits:4});
 
+    // 마지막 결과(복사용)
+    let _lastResult = null;
+
     function compute(){
       const mode = $("mode").value;
       const tierIdx = Number($("tier").value);
@@ -212,7 +215,7 @@
       const currVol = Number($("currVol").value||0);
       const prevPts = Number($("prevPts").value||0);
       const currPts = Number($("currPts").value||0);
-      const boost = Number($("boost").value||0);
+      const boost = Number($("boost").value||0); // 현재 계산에는 사용 구간 XP 그대로 사용 (참고용)
 
       const usedVol = Math.max(0, (currVol||0) - (prevVol||0));
       const usedPts = Math.max(0, (currPts||0) - (prevPts||0));
@@ -221,19 +224,17 @@
       let totalFeeEst = usedVol * makerFee;
 
       // 고급 옵션 입력
-      const feeGross = Number($("feeGross").value||0); // 총 수수료
-      const feeNet   = Number($("feeNet").value||0);   // 실제 낸 수수료
+      const feeGross = Number($("feeGross").value||0); // 총 수수료(리베이트 전)
+      const feeNet   = Number($("feeNet").value||0);   // 실제 낸 수수료(리베이트 후)
       const refRate  = Number($("refRate").value||60)/100;
 
       // 평균 수수료율/추정 Taker 비중 역산
       let avgFeeRate = makerFee, takerShare = 0;
       let selfRefActual = 0;
-      let note = "";
 
       if (feeGross>0){
         totalFeeEst = feeGross;
         avgFeeRate = usedVol>0 ? (feeGross/usedVol) : 0;
-        // alpha = (avg - maker) / (taker - maker)
         if (takerFee !== makerFee){
           takerShare = Math.min(1, Math.max(0, (avgFeeRate - makerFee) / (takerFee - makerFee)));
         }
@@ -241,11 +242,10 @@
           selfRefActual = Math.max(0, feeGross - feeNet);
         }
       }else{
-        avgFeeRate = makerFee;
-        takerShare = 0;
+        avgFeeRate = makerFee; takerShare = 0;
       }
 
-      // 예상 셀프레퍼럴(60%)
+      // 예상 셀프레퍼럴(가정 r%)
       const selfRefExpected = totalFeeEst * refRate;
       const netFeeExpected = totalFeeEst - selfRefExpected;
 
@@ -253,7 +253,7 @@
       const xpEfficiency = usedVol>0 ? usedPts/usedVol : 0;
       const volPerXp = usedPts>0 ? usedVol/usedPts : 0;
 
-      // 1 XP당 실질 비용(수수료만) — 실제 입력값우선, 없으면 예상치
+      // 1 XP당 실질 비용(수수료만)
       const feeForCost = (feeNet>0 && feeGross>0) ? feeNet : netFeeExpected;
       const costPerXp = usedPts>0 ? feeForCost/usedPts : 0;
 
@@ -263,36 +263,91 @@
       rows.push(`<div class="kv"><span class="k">XP 효율</span><span class="v num">${d4(xpEfficiency)} XP/$</span></div>`);
       rows.push(`<div class="kv"><span class="k">1 XP당 거래량</span><span class="v num">${d4(volPerXp)} $/XP</span></div>`);
 
-      // 수수료 요약
       rows.push(`<hr class="my-3 border-[#2b2f36]" />`);
       rows.push(`<div class="kv"><span class="k">총 수수료(기준)</span><span class="v num">${d2(totalFeeEst)} $</span></div>`);
       rows.push(`<div class="kv"><span class="k">평균 수수료율</span><span class="v num">${d4(avgFeeRate*100)} %</span></div>`);
       rows.push(`<div class="kv"><span class="k">추정 Taker 비중</span><span class="v num">${d2(takerShare*100)} %</span></div>`);
 
-      if (feeGross>0 || feeNet>0){
-        // 실제 입력값을 우선 보여줌
-        if (feeGross>0) rows.push(`<div class="kv"><span class="k">총 수수료(입력)</span><span class="v num">${d2(feeGross)} $</span></div>`);
-        if (feeNet>0){
-          rows.push(`<div class="kv"><span class="k">실제 낸 수수료(입력)</span><span class="v num text-[var(--danger)]">${d2(feeNet)} $</span></div>`);
-          if (feeGross>0){
-            rows.push(`<div class="kv"><span class="k">셀프레퍼럴 수익(실제)</span><span class="v num text-[var(--ok)]">${d2(selfRefActual)} $</span></div>`);
-          }
+      if (feeGross>0) rows.push(`<div class="kv"><span class="k">총 수수료(입력)</span><span class="v num">${d2(feeGross)} $</span></div>`);
+      if (feeNet>0){
+        rows.push(`<div class="kv"><span class="k">실제 낸 수수료(입력)</span><span class="v num text-[var(--danger)]">${d2(feeNet)} $</span></div>`);
+        if (feeGross>0){
+          rows.push(`<div class="kv"><span class="k">셀프레퍼럴 수익(실제)</span><span class="v num text-[var(--ok)]">${d2(selfRefActual)} $</span></div>`);
         }
       }
 
-      // 예상치도 안내 (가정 r%)
       rows.push(`<div class="kv"><span class="k">셀프레퍼럴(가정 ${Math.round(refRate*100)}%)</span><span class="v num text-[var(--ok)]">${d2(selfRefExpected)} $</span></div>`);
       rows.push(`<div class="kv"><span class="k">실제 낸 수수료(가정)</span><span class="v num text-[var(--danger)]">${d2(netFeeExpected)} $</span></div>`);
       rows.push(`<div class="kv"><span class="k">1 XP당 실질 비용(수수료만)</span><span class="v num">${d4(costPerXp)} $/XP</span></div>`);
 
       $("out").innerHTML = `<div class="space-y-1">${rows.join("")}</div>`;
+
+      // 복사용 데이터 저장
+      _lastResult = {
+        mode: mode==='perps' ? 'Perps' : 'Spot',
+        tier: FEES[mode].tiers[tierIdx].name,
+        makerFee, takerFee,
+        usedVol, usedPts, xpEfficiency, volPerXp,
+        totalFeeEst, avgFeeRate, takerShare,
+        feeGross, feeNet, selfRefActual,
+        refRate, selfRefExpected, netFeeExpected, costPerXp
+      };
+    }
+
+    function copyResultToClipboard(){
+      if (!_lastResult) {
+        compute();
+        if (!_lastResult) return;
+      }
+      const r = _lastResult;
+      const lines = [
+        `=== XP 효율 · 수수료 요약 ===`,
+        `모드: ${r.mode} · ${r.tier}`,
+        `수수료(M/T): ${(r.makerFee*100).toFixed(3)}% / ${(r.takerFee*100).toFixed(3)}%`,
+        ``,
+        `사용 거래량: ${d2(r.usedVol)} $`,
+        `획득 XP: ${d2(r.usedPts)} XP`,
+        `XP 효율: ${d4(r.xpEfficiency)} XP/$`,
+        `1 XP당 거래량: ${d4(r.volPerXp)} $/XP`,
+        ``,
+        `총 수수료(기준): ${d2(r.totalFeeEst)} $`,
+        `평균 수수료율: ${d4(r.avgFeeRate*100)} %`,
+        `추정 Taker 비중: ${d2(r.takerShare*100)} %`,
+        (r.feeGross>0 ? `총 수수료(입력): ${d2(r.feeGross)} $` : null),
+        (r.feeNet>0   ? `실제 낸 수수료(입력): ${d2(r.feeNet)} $` : null),
+        (r.feeGross>0 && r.feeNet>0 ? `셀프레퍼럴 수익(실제): ${d2(r.selfRefActual)} $` : null),
+        `셀프레퍼럴(가정 ${Math.round(r.refRate*100)}%): ${d2(r.selfRefExpected)} $`,
+        `실제 낸 수수료(가정): ${d2(r.netFeeExpected)} $`,
+        `1 XP당 실질 비용(수수료만): ${d4(r.costPerXp)} $/XP`
+      ].filter(Boolean);
+      const text = lines.join('\n');
+
+      const done = () => {
+        const btn = $("copy");
+        const old = btn.textContent;
+        btn.textContent = "복사됨 ✅";
+        setTimeout(()=> btn.textContent = old, 1200);
+      };
+
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(()=> {
+          const ta = document.createElement('textarea');
+          ta.value = text; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          done();
+        });
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        done();
+      }
     }
 
     // 저장/복원
     const KEYS = ["mode","boost","tier","prevVol","currVol","prevPts","currPts","feeGross","feeNet","refRate"];
     function saveInputs(){
-      const obj={};
-      KEYS.forEach(k=> obj[k] = $(k).value);
+      const obj={}; KEYS.forEach(k=> obj[k] = $(k).value);
       localStorage.setItem("based_xp_calc_v2", JSON.stringify(obj));
     }
     function loadInputs(){
@@ -317,11 +372,13 @@
       $("mode").value="perps";
       populateTier();
       $("out").innerHTML="";
+      _lastResult=null;
     }
 
     $("calc").addEventListener("click", compute);
     $("save").addEventListener("click", ()=>{ saveInputs(); compute(); });
     $("reset").addEventListener("click", ()=>{ resetAll(); saveInputs(); });
+    $("copy").addEventListener("click", copyResultToClipboard);
 
     // 초기화
     populateTier();
