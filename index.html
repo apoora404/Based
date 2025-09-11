@@ -3,42 +3,66 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>XP 효율 · 수수료 계산기</title>
+  <title>Basedapp Checker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     :root{
       color-scheme: dark light;
-      --bg:#0f1012; --panel:#17181c; --muted:#9aa4af;
-      --accent:#ff6a3d; --ok:#2ad7a3; --danger:#ff6b6b;
+      --bg:#0e0f12;            /* 배경 */
+      --panel:#16181d;         /* 카드 배경 */
+      --border:#242833;
+      --muted:#98a2af;
+      --accent:#ff6a3d;        /* 주황 (포커스/메인 버튼) */
+      --accent-2:#ff825c;      /* 주황 라이트 */
+      --ok:#2ad7a3;            /* 초록(리베이트/양수) */
+      --danger:#ff6b6b;        /* 빨강(지출) */
       --ring: 0 0 0 3px rgba(255,106,61,.35);
     }
-    body{background:var(--bg); color:#e6e8ea;}
-    .card{background:var(--panel); border:1px solid #23262b;}
-    .muted{color:var(--muted)}
-    .btn{background:var(--accent); color:white}
-    .btn:hover{filter:brightness(1.05)}
-    .btn-ghost{background:#22252b; border:1px solid #2b2f36; color:#e6e8ea}
-    input,select{background:#101216; border:1px solid #2a2f36; color:#e6e8ea; border-radius:12px; padding:.65rem .8rem; width:100%;}
-    input:focus,select:focus{outline:none; box-shadow:var(--ring); border-color:#3a414b}
-    .num{font-variant-numeric:tabular-nums}
-    .badge{background:#121418; border:1px solid #2b2f36; padding:.2rem .5rem; border-radius:999px}
-    .kv{display:flex; gap:.5rem; align-items:baseline}
-    .kv .k{min-width:11rem; color:#aab2bd}
-    .kv .v{font-weight:600}
+    body{ background:var(--bg); color:#e8eaee }
+    .card{ background:var(--panel); border:1px solid var(--border) }
+    .muted{ color:var(--muted) }
+    .btn{ background:var(--accent); color:white }
+    .btn:hover{ filter:brightness(1.05) }
+    .btn-ghost{ background:#1b1f26; border:1px solid var(--border); color:#e8eaee }
+    input,select{
+      background:#101217; border:1px solid var(--border); color:#e8eaee;
+      border-radius:12px; padding:.65rem .8rem; width:100%;
+    }
+    input:focus,select:focus{ outline:none; box-shadow:var(--ring); border-color:#3a414b }
+    .num{ font-variant-numeric:tabular-nums }
+    .badge{ background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; }
+    .kv{ display:flex; gap:.5rem; align-items:baseline }
+    .kv .k{ min-width:12.5rem; color:#aab2bd }
+    .kv .v{ font-weight:700 }
+    /* 결과 카드 강조 프레임 */
+    .frame {
+      position: relative; border-radius:18px; padding:4px;
+      background: linear-gradient(135deg, rgba(255,106,61,.7), rgba(255,130,92,.25));
+    }
+    .frame > .inner {
+      background:var(--panel); border-radius:16px; border:1px solid var(--border);
+    }
+    /* 등장 애니메이션 */
+    .fade-in { animation: fadeIn .28s ease-out both }
+    @keyframes fadeIn {
+      from { opacity:0; transform: translateY(6px) }
+      to   { opacity:1; transform: translateY(0) }
+    }
   </style>
 </head>
 <body>
   <header class="max-w-5xl mx-auto px-4 py-7">
     <div class="rounded-3xl border border-[var(--accent)]/60 p-3 inline-block">
       <div class="rounded-2xl px-5 py-3 bg-[var(--panel)]">
-        <h1 class="text-2xl font-semibold">XP 효율 · 수수료 계산기</h1>
+        <h1 class="text-2xl font-semibold">Basedapp Checker</h1>
       </div>
     </div>
-    <p class="mt-3 muted text-sm">
-      ▸ <b>이전/현재 포인트만</b> 입력하면 XP 차이로 <b>필요 거래량</b> 역산<br/>
-      ▸ <b>이전/현재 거래량만</b> 입력하면 거래량 차이로 <b>획득 XP</b> 계산<br/>
-      ▸ 총 수수료(누적) 이전/현재를 넣으면 차이로 <b>이번 구간 총 수수료</b> 반영(리베이트 60%는 결과에서만 표시)
+    <p class="mt-3 muted text-sm leading-6">
+      • <b>이전/현재 포인트만</b> 입력 시 → 포인트 차이로 <b>필요 거래량</b>을 역산<br/>
+      • <b>이전/현재 거래량만</b> 입력 시 → 거래량 차이로 <b>획득 XP</b>를 계산<br/>
+      • <b>총 수수료(누적)</b> 이전/현재를 넣으면 차이로 이번 구간 <b>총 수수료(리베이트 전)</b>을 사용<br/>
+      • 리베이트(60%)는 결과에서만 적용, <b>수수료 미입력 시 Taker 비중 추정은 표시하지 않음</b>
     </p>
   </header>
 
@@ -120,19 +144,23 @@
     </section>
 
     <!-- 결과 -->
-    <section id="resultCard" class="card rounded-2xl p-4 space-y-3">
-      <div class="flex items-center gap-2">
-        <h3 class="font-semibold text-lg">결과</h3>
-        <span class="badge text-xs" id="modeBadge">Perps · Tier 0</span>
-        <span class="badge text-xs" id="feeBadge">Maker/Taker: -</span>
-        <button id="copy" class="btn-ghost px-3 py-1.5 rounded-lg text-sm ml-auto">복사</button>
-        <button id="saveImg" class="btn-ghost px-3 py-1.5 rounded-lg text-sm">PNG 저장</button>
+    <section id="resultCard" class="frame fade-in">
+      <div class="inner rounded-2xl p-4 space-y-3 relative">
+        <div class="flex items-center gap-2 pr-32">
+          <h3 class="font-semibold text-lg">결과</h3>
+          <span class="badge text-xs" id="modeBadge">Perps · Tier 0</span>
+          <span class="badge text-xs" id="feeBadge">Maker/Taker: -</span>
+        </div>
+        <div class="absolute right-3 top-3 flex gap-2">
+          <button id="copy" class="btn-ghost px-3 py-1.5 rounded-lg text-sm">복사</button>
+          <button id="saveImg" class="btn-ghost px-3 py-1.5 rounded-lg text-sm">PNG 저장</button>
+        </div>
+        <div id="out" class="space-y-2"></div>
+        <p class="text-[11px] muted">
+          평균 수수료율은 기본적으로 <b>Maker</b>만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과
+          <b>추정 Taker 비중</b>을 역산하여 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.
+        </p>
       </div>
-      <div id="out" class="space-y-2"></div>
-      <p class="text-[11px] muted">
-        평균 수수료율은 기본적으로 <b>Maker</b>만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과
-        <b>추정 Taker 비중</b>을 역산해 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.
-      </p>
     </section>
   </main>
 
@@ -198,24 +226,19 @@
       const prevFeeGross = Number($("prevFeeGross").value||0);
       const currFeeGross = Number($("currFeeGross").value||0);
 
-      const haveVolPair = currVol>0 || prevVol>0;
-      const havePtsPair = currPts>0 || prevPts>0;
-
-      let usedVol = 0, usedPts = 0;
-      const eff = xpPerDollar(mode, boost); // XP/$
-
-      // 우선순위: (1) 둘 다 있으면 둘 다 사용 (2) 포인트만 있으면 거래량 역산 (3) 거래량만 있으면 XP 계산
       const deltaVol = (currVol && prevVol) ? Math.max(0, currVol - prevVol) : 0;
       const deltaPts = (currPts && prevPts) ? Math.max(0, currPts - prevPts) : 0;
 
+      const eff = xpPerDollar(mode, boost); // XP/$
+
+      let usedVol = 0, usedPts = 0;
       if (deltaVol>0 && deltaPts>0){
-        usedVol = deltaVol; usedPts = deltaPts; // 그대로 사용
-      } else if (deltaPts>0 && deltaVol===0){
-        usedPts = deltaPts; usedVol = eff>0 ? usedPts/eff : 0; // XP -> Vol 역산
-      } else if (deltaVol>0 && deltaPts===0){
-        usedVol = deltaVol; usedPts = usedVol*eff;          // Vol -> XP 계산
+        usedVol = deltaVol; usedPts = deltaPts;
+      } else if (deltaPts>0){
+        usedPts = deltaPts; usedVol = eff>0 ? usedPts/eff : 0;
+      } else if (deltaVol>0){
+        usedVol = deltaVol; usedPts = usedVol*eff;
       } else {
-        // 입력 부족
         $("out").innerHTML = `<div class="text-sm muted">이전/현재 포인트 또는 거래량 중 하나의 쌍이라도 입력해 주세요.</div>`;
         _lastResult=null; return;
       }
@@ -223,13 +246,18 @@
       // 총 수수료(리베이트 전): 기본 Maker 가정, 누적차이 있으면 덮어쓰기
       let feeGross = usedVol * makerFee;
       const feeGrossInput = (currFeeGross>0 || prevFeeGross>0) ? Math.max(0, currFeeGross - prevFeeGross) : 0;
-      if (feeGrossInput>0) feeGross = feeGrossInput;
+      const feeByUser = feeGrossInput>0;
+      if (feeByUser) feeGross = feeGrossInput;
 
-      // 평균 수수료율 / 추정 Taker 비중
+      // 평균 수수료율
       const avgFeeRate = usedVol>0 ? (feeGross/usedVol) : 0;
-      let takerShare = 0;
-      if (usedVol>0 && takerFee!==makerFee){
-        takerShare = Math.min(1, Math.max(0, (avgFeeRate - makerFee) / (takerFee - makerFee)));
+
+      // Taker 비중(수수료 입력 없으면 표시하지 않음)
+      let takerShareText = "— (수수료 입력 필요)";
+      let takerShareVal = null;
+      if (feeByUser && usedVol>0 && takerFee!==makerFee){
+        const share = Math.min(1, Math.max(0, (avgFeeRate - makerFee) / (takerFee - makerFee)));
+        takerShareVal = share; takerShareText = `${d2(share*100)} %`;
       }
 
       // 리베이트 60% (결과만)
@@ -238,7 +266,6 @@
       // 효율
       const xpEfficiency = usedVol>0 ? usedPts/usedVol : 0;
       const volPerXp = usedPts>0 ? usedVol/usedPts : 0;
-      const costPerXp = usedPts>0 ? (feeNet/usedPts) : 0;
 
       // 참고: 기대 효율 대비 편차(둘 다 입력된 경우만)
       let effNote="";
@@ -249,25 +276,26 @@
       }
 
       const rows=[];
-      rows.push(`<div class="kv"><span class="k">사용 거래량</span><span class="v num">${d2(usedVol)} $</span></div>`);
-      rows.push(`<div class="kv"><span class="k">획득 XP</span><span class="v num">${d2(usedPts)} XP</span></div>`);
+      rows.push(`<div class="kv"><span class="k">사용 거래량</span><span class="v num text-[1.05rem]">${d2(usedVol)} $</span></div>`);
+      rows.push(`<div class="kv"><span class="k">획득 XP</span><span class="v num text-[1.05rem]">${d2(usedPts)} XP</span></div>`);
       rows.push(`<div class="kv"><span class="k">XP 효율</span><span class="v num">${d4(xpEfficiency)} XP/$${effNote}</span></div>`);
       rows.push(`<div class="kv"><span class="k">1 XP당 거래량</span><span class="v num">${d4(volPerXp)} $/XP</span></div>`);
       rows.push(`<hr class="my-3 border-[#2b2f36]" />`);
       rows.push(`<div class="kv"><span class="k">총 수수료(리베이트 전)</span><span class="v num">${d2(feeGross)} $</span></div>`);
       rows.push(`<div class="kv"><span class="k">평균 수수료율</span><span class="v num">${d4(avgFeeRate*100)} %</span></div>`);
-      rows.push(`<div class="kv"><span class="k">추정 Taker 비중</span><span class="v num">${d2(takerShare*100)} %</span></div>`);
+      rows.push(`<div class="kv"><span class="k">추정 Taker 비중</span><span class="v num">${takerShareText}</span></div>`);
       rows.push(`<div class="kv"><span class="k">셀프레퍼럴 수익(60%)</span><span class="v num text-[var(--ok)]">${d2(rebateAmt)} $</span></div>`);
       rows.push(`<div class="kv"><span class="k">실제 낸 수수료(리베이트 후)</span><span class="v num text-[var(--danger)]">${d2(feeNet)} $</span></div>`);
+      const costPerXp = usedPts>0 ? (feeNet/usedPts) : 0;
       rows.push(`<div class="kv"><span class="k">1 XP당 실질 비용(수수료만)</span><span class="v num">${d4(costPerXp)} $/XP</span></div>`);
-      $("out").innerHTML = `<div class="space-y-1">${rows.join("")}</div>`;
+      $("out").innerHTML = `<div class="space-y-1 fade-in">${rows.join("")}</div>`;
 
       _lastResult = {
         mode: mode==='perps' ? 'Perps' : 'Spot',
         tier: FEES[mode].tiers[tierIdx].name,
         makerFee, takerFee, boost,
         usedVol, usedPts, xpEfficiency, volPerXp,
-        feeGross, avgFeeRate, takerShare,
+        feeGross, avgFeeRate, takerShareVal,
         rebateRate, rebateAmt, feeNet, costPerXp
       };
 
@@ -277,8 +305,9 @@
     function copyResultToClipboard(){
       if (!_lastResult){ compute(); if(!_lastResult) return; }
       const r=_lastResult;
+      const takerLine = (r.takerShareVal==null) ? "— (수수료 입력 필요)" : `${d2(r.takerShareVal*100)} %`;
       const lines=[
-        `=== XP 효율 · 수수료 요약 ===`,
+        `=== Basedapp Checker — 결과 요약 ===`,
         `모드: ${r.mode} · ${r.tier} · Boost ${r.boost}%`,
         `수수료(M/T): ${(r.makerFee*100).toFixed(3)}% / ${(r.takerFee*100).toFixed(3)}%`,
         ``,
@@ -289,11 +318,11 @@
         ``,
         `총 수수료(리베이트 전): ${d2(r.feeGross)} $`,
         `평균 수수료율: ${d4(r.avgFeeRate*100)} %`,
-        `추정 Taker 비중: ${d2(r.takerShare*100)} %`,
+        `추정 Taker 비중: ${takerLine}`,
         `셀프레퍼럴 수익(${Math.round(r.rebateRate*100)}%): ${d2(r.rebateAmt)} $`,
         `실제 낸 수수료(리베이트 후): ${d2(r.feeNet)} $`,
         `1 XP당 실질 비용(수수료만): ${d4(r.costPerXp)} $/XP`
-      ].filter(Boolean).join('\n');
+      ].join('\n');
 
       const done=()=>{ const b=$("copy"); const t=b.textContent; b.textContent="복사됨 ✅"; setTimeout(()=>b.textContent=t,1200); };
       if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(lines).then(done).catch(()=>fallback()); }
@@ -308,16 +337,16 @@
       const node=document.getElementById('resultCard');
       const canvas=await html2canvas(node,{backgroundColor:null, scale:2, useCORS:true});
       const dataURL=canvas.toDataURL('image/png');
-      const a=document.createElement('a'); a.href=dataURL; a.download='xp_calc_result.png';
+      const a=document.createElement('a'); a.href=dataURL; a.download='basedapp_checker_result.png';
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       const b=$("saveImg"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200);
     }
 
     // 저장/복원
     const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross"];
-    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("based_xp_calc_v5",JSON.stringify(obj)); };
+    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_checker_v1",JSON.stringify(obj)); };
     function loadInputs(){
-      const raw=localStorage.getItem("based_xp_calc_v5"); if(!raw) return;
+      const raw=localStorage.getItem("basedapp_checker_v1"); if(!raw) return;
       try{ const obj=JSON.parse(raw); if(obj.mode) $("mode").value=obj.mode; populateTier();
         KEYS.forEach(k=>{ if(obj[k]!==undefined && k!=="mode") $(k).value=obj[k]; }); updateFeeHint();
       }catch(e){}
@@ -333,6 +362,7 @@
     $("copy").addEventListener("click", copyResultToClipboard);
     $("saveImg").addEventListener("click", saveResultAsPng);
 
+    // 초기화
     populateTier(); loadInputs(); updateFeeHint();
   </script>
 </body>
