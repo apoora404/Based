@@ -34,8 +34,9 @@
     .num{ font-variant-numeric:tabular-nums }
     .badge{ background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; }
     .kv{ display:flex; gap:.5rem; align-items:baseline }
-    .kv .k{ min-width:12.5rem; color:#aab2bd }
-    .kv .v{ font-weight:700 }
+    /* 화면용 결과 라벨/값 톤 조정(선택) */
+    .kv .k { color:#cbd4df }          /* 기존 #aab2bd → 더 밝게 */
+    .kv .v { color:#f3f6fb; font-weight:800 } /* 값은 더 밝고 굵게 */
     /* 결과 카드 강조 프레임 */
     .frame {
       position: relative; border-radius:18px; padding:4px;
@@ -58,21 +59,25 @@
       width: fit-content;
       color:#e9edf3;
     }
-    .export-card {
+    /* --- 캡처용(내보내기) 카드 톤 업그레이드 --- */
+   .export-card {
       background: var(--panel-solid);
-      border: 1px solid var(--border);
+      border: 1px solid #343a46;       /* 더 진한 테두리 */
       border-radius: 16px;
-      padding: 16px 16px 10px 16px;
-      width: 720px; /* 결과 이미지 가독성 좋은 고정 폭 */
-      color:#e9edf3;
+      padding: 18px 18px 12px 18px;
+      width: 760px;                     /* 살짝 넓혀 가독성 ↑ */
+      color:#ffffff;                    /* 기본 텍스트는 화이트 */
     }
-    .export-card *{ color:#e9edf3 !important } /* 캡처 시 흐릿 방지 (텍스트 색 강제) */
-    .export-title { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem }
-    .export-badges { margin-left:.5rem; display:flex; gap:.5rem; align-items:center }
-    .export-kv { display:flex; gap:.5rem; align-items:baseline; }
-    .export-k { min-width:12.5rem; color:#c9d1db !important }
-    .export-v { font-weight:700 }
-    .export-hr { border-top:1px solid #2b2f36; margin:.75rem 0 }
+
+/* 모든 텍스트 색 강제 → 흐릿 방지 */
+    .export-card *{ color:#ffffff !important }
+
+/* 레이블/값 톤 분리 */
+    .export-k  { min-width:12.5rem; color:#d6dee8 !important; font-weight:600; }
+    .export-v  { font-weight:800; font-size:18px; }   /* 값 더 크고 굵게 */
+
+/* 구분선 더 진하게 */
+    .export-hr { border-top:1px solid #3b414b; margin:.9rem 0 }
     .export-badge { background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; font-size:12px }
     .text-ok{ color:var(--ok) !important }
     .text-danger{ color:var(--danger) !important }
@@ -419,11 +424,11 @@
 
       // 2) 문서에 붙여서 캔버스 생성 (불투명 배경을 명시)
       document.body.appendChild(wrap);
-      const canvas=await html2canvas(wrap,{
+      const canvas = await html2canvas(wrap, {
         backgroundColor: '#0e0f12',
-        scale: 2,
+        scale: 3,            // 2 → 3 로 업 (레티나급 선명)
         useCORS: true
-      });
+        });
       const dataURL=canvas.toDataURL('image/png');
 
       // 3) 다운로드
@@ -461,3 +466,4 @@
   </script>
 </body>
 </html>
+
