@@ -11,6 +11,7 @@
       color-scheme: dark light;
       --bg:#0e0f12;            /* 배경 */
       --panel:#16181d;         /* 카드 배경 */
+      --panel-solid:#121419;   /* 내보내기용 더 진한 불투명 */
       --border:#242833;
       --muted:#98a2af;
       --accent:#ff6a3d;        /* 주황 (포커스/메인 버튼) */
@@ -49,22 +50,45 @@
       from { opacity:0; transform: translateY(6px) }
       to   { opacity:1; transform: translateY(0) }
     }
+
+    /* === 내보내기용(캡처 전용) 순수 카드 스타일 === */
+    .export-wrap {
+      background: var(--bg);
+      padding: 24px;
+      border-radius: 20px;
+      width: fit-content;
+    }
+    .export-card {
+      background: var(--panel-solid);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      width: 720px; /* 결과 이미지 가독성 좋은 고정 폭 */
+    }
+    .export-title { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem }
+    .export-badges { margin-left:.5rem; display:flex; gap:.5rem; align-items:center }
+    .export-kv { display:flex; gap:.5rem; align-items:baseline; }
+    .export-k { min-width:12.5rem; color:#aab2bd }
+    .export-v { font-weight:700 }
+    .export-hr { border-top:1px solid #2b2f36; margin:.75rem 0 }
+    .export-badge { background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; font-size:12px }
   </style>
 </head>
 <body>
   <header class="max-w-5xl mx-auto px-4 py-7">
-    <div class="rounded-3xl border border-[var(--accent)]/60 p-3 inline-block">
-      <div class="rounded-2xl px-5 py-3 bg-[var(--panel)]">
-        <h1 class="text-2xl font-semibold">Basedapp Checker</h1>
-      </div>
+  <!-- 카드 자체를 가운데 배치 -->
+  <div class="rounded-3xl border border-[var(--accent)]/60 p-3 mx-auto w-fit">
+    <!-- 제목 텍스트도 가운데 정렬 -->
+    <div class="rounded-2xl px-5 py-3 bg-[var(--panel)] text-center">
+      <h1 class="text-2xl font-semibold">Basedapp Checker</h1>
     </div>
-    <p class="mt-3 muted text-sm leading-6">
-      • <b>이전/현재 포인트만</b> 입력 시 → 포인트 차이로 <b>필요 거래량</b>을 역산<br/>
-      • <b>이전/현재 거래량만</b> 입력 시 → 거래량 차이로 <b>획득 XP</b>를 계산<br/>
-      • <b>총 수수료(누적)</b> 이전/현재를 넣으면 차이로 이번 구간 <b>총 수수료(리베이트 전)</b>을 사용<br/>
-      • 리베이트(60%)는 결과에서만 적용, <b>수수료 미입력 시 Taker 비중 추정은 표시하지 않음</b>
-    </p>
-  </header>
+  </div>
+
+  <!-- 제목만 가운데 두고 설명문은 왼쪽 유지하려면 그대로 두세요.
+       설명문도 가운데로 하고 싶으면 아래 p에 text-center 추가 -->
+  <p class="mt-3 muted text-sm leading-6">...</p>
+  <!-- <p class="mt-3 muted text-sm leading-6 text-center">...</p> -->
+</header>
 
   <main class="max-w-5xl mx-auto px-4 pb-28 space-y-6">
     <!-- 입력 -->
@@ -96,22 +120,22 @@
       <div class="grid sm:grid-cols-2 gap-3">
         <label class="block">
           <span class="block text-xs muted">이전 거래량 (누적, $)</span>
-          <input id="prevVol" type="number" step="0.01" placeholder="예: 200000" />
+          <input id="prevVol" type="number" step="0.01" placeholder="예: 0 또는 200000" />
         </label>
         <label class="block">
           <span class="block text-xs muted">현재 거래량 (누적, $)</span>
-          <input id="currVol" type="number" step="0.01" placeholder="예: 290000" />
+          <input id="currVol" type="number" step="0.01" placeholder="예: 10000 또는 290000" />
         </label>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-3">
         <label class="block">
           <span class="block text-xs muted">이전 포인트 (누적)</span>
-          <input id="prevPts" type="number" step="0.01" placeholder="예: 12000" />
+          <input id="prevPts" type="number" step="0.01" placeholder="예: 0 또는 12000" />
         </label>
         <label class="block">
           <span class="block text-xs muted">현재 포인트 (누적)</span>
-          <input id="currPts" type="number" step="0.01" placeholder="예: 20000" />
+          <input id="currPts" type="number" step="0.01" placeholder="예: 540 또는 20000" />
         </label>
       </div>
 
@@ -123,11 +147,11 @@
         <div class="grid sm:grid-cols-2 gap-3 mt-3">
           <label class="block">
             <span class="block text-xs muted">이전 총 수수료 (누적, $)</span>
-            <input id="prevFeeGross" type="number" step="0.01" />
+            <input id="prevFeeGross" type="number" step="0.01" placeholder="예: 0 또는 25.3" />
           </label>
           <label class="block">
             <span class="block text-xs muted">현재 총 수수료 (누적, $)</span>
-            <input id="currFeeGross" type="number" step="0.01" />
+            <input id="currFeeGross" type="number" step="0.01" placeholder="예: 4.0 또는 409.1" />
           </label>
         </div>
         <p class="text-[11px] muted mt-2">
@@ -218,16 +242,17 @@
       const makerFee = fee.maker, takerFee = fee.taker;
       const boost = Number($("boost").value||0);
 
-      // 입력
-      const prevVol = Number($("prevVol").value||0);
-      const currVol = Number($("currVol").value||0);
-      const prevPts = Number($("prevPts").value||0);
-      const currPts = Number($("currPts").value||0);
-      const prevFeeGross = Number($("prevFeeGross").value||0);
-      const currFeeGross = Number($("currFeeGross").value||0);
+      // 입력 (빈칸은 0으로 처리)
+      const prevVol = Number($("prevVol").value || 0);
+      const currVol = Number($("currVol").value || 0);
+      const prevPts = Number($("prevPts").value || 0);
+      const currPts = Number($("currPts").value || 0);
+      const prevFeeGross = Number($("prevFeeGross").value || 0);
+      const currFeeGross = Number($("currFeeGross").value || 0);
 
-      const deltaVol = (currVol && prevVol) ? Math.max(0, currVol - prevVol) : 0;
-      const deltaPts = (currPts && prevPts) ? Math.max(0, currPts - prevPts) : 0;
+      // 0도 유효값: 둘 다 >=0이면 차이 계산
+      const deltaVol = (currVol >= 0 && prevVol >= 0) ? Math.max(0, currVol - prevVol) : 0;
+      const deltaPts = (currPts >= 0 && prevPts >= 0) ? Math.max(0, currPts - prevPts) : 0;
 
       const eff = xpPerDollar(mode, boost); // XP/$
 
@@ -245,8 +270,8 @@
 
       // 총 수수료(리베이트 전): 기본 Maker 가정, 누적차이 있으면 덮어쓰기
       let feeGross = usedVol * makerFee;
-      const feeGrossInput = (currFeeGross>0 || prevFeeGross>0) ? Math.max(0, currFeeGross - prevFeeGross) : 0;
-      const feeByUser = feeGrossInput>0;
+      const feeGrossInput = (currFeeGross >= 0 && prevFeeGross >= 0) ? Math.max(0, currFeeGross - prevFeeGross) : 0;
+      const feeByUser = feeGrossInput>0 || (currFeeGross>0 || prevFeeGross>0);
       if (feeByUser) feeGross = feeGrossInput;
 
       // 평균 수수료율
@@ -267,9 +292,9 @@
       const xpEfficiency = usedVol>0 ? usedPts/usedVol : 0;
       const volPerXp = usedPts>0 ? usedVol/usedPts : 0;
 
-      // 참고: 기대 효율 대비 편차(둘 다 입력된 경우만)
+      // 기대 효율 대비 편차(둘 다 입력된 경우만)
       let effNote="";
-      if (deltaVol>0 && deltaPts>0){
+      if ((currVol>0 || prevVol>=0) && (currPts>0 || prevPts>=0) && deltaVol>0 && deltaPts>0){
         const expectedEff = eff;
         const diffPct = expectedEff>0 ? ((xpEfficiency-expectedEff)/expectedEff*100) : 0;
         effNote = ` (기대 ${d4(expectedEff)} 대비 ${diffPct>=0?"+":""}${d2(diffPct)}%)`;
@@ -333,20 +358,82 @@
       }
     }
 
+    // 내보내기: 그라디언트/투명 제거한 클론 노드로 캡처
     async function saveResultAsPng(){
-      const node=document.getElementById('resultCard');
-      const canvas=await html2canvas(node,{backgroundColor:null, scale:2, useCORS:true});
+      if(!_lastResult){ compute(); if(!_lastResult) return; }
+      const src = document.getElementById('resultCard');
+
+      // 1) 내보내기용 DOM 구성
+      const wrap = document.createElement('div');
+      wrap.className = 'export-wrap';
+      const card = document.createElement('div');
+      card.className = 'export-card';
+      wrap.appendChild(card);
+
+      // 헤더
+      const head = document.createElement('div');
+      head.className = 'export-title';
+      const h = document.createElement('div');
+      h.textContent = '결과';
+      h.style.fontWeight = '700';
+      h.style.fontSize = '18px';
+      head.appendChild(h);
+
+      const badges = document.createElement('div');
+      badges.className = 'export-badges';
+      const b1 = document.createElement('span'); b1.className='export-badge'; b1.textContent = document.getElementById('modeBadge').textContent;
+      const b2 = document.createElement('span'); b2.className='export-badge'; b2.textContent = document.getElementById('feeBadge').textContent;
+      badges.appendChild(b1); badges.appendChild(b2);
+      head.appendChild(badges);
+      card.appendChild(head);
+
+      // 본문 (텍스트만 이식)
+      const out = document.getElementById('out');
+      if(!out || !out.firstChild){ compute(); }
+      const tmp = document.createElement('div'); tmp.innerHTML = out.innerHTML;
+
+      // 클래스 교체
+      tmp.querySelectorAll('.kv').forEach(el=>{
+        el.className = 'export-kv';
+        const k = el.querySelector('.k'); if(k) k.className='export-k';
+        const v = el.querySelector('.v'); if(v) v.className='export-v num';
+      });
+
+      // 강조 색상 유지
+      tmp.querySelectorAll('[style*="var(--ok)"]').forEach(el=>{ el.style.color = 'var(--ok)'; });
+      tmp.querySelectorAll('[style*="var(--danger)"]').forEach(el=>{ el.style.color = 'var(--danger)'; });
+      tmp.querySelectorAll('hr').forEach(hr=>{ const d=document.createElement('div'); d.className='export-hr'; hr.replaceWith(d); });
+
+      card.appendChild(tmp);
+
+      // 푸터 문구
+      const foot = document.createElement('div');
+      foot.className='muted';
+      foot.style.fontSize='11px';
+      foot.style.marginTop='6px';
+      foot.textContent = '평균 수수료율은 기본적으로 Maker만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과 추정 Taker 비중을 역산해 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.';
+      card.appendChild(foot);
+
+      // 2) 문서에 붙여서 캔버스 생성
+      document.body.appendChild(wrap);
+      const canvas=await html2canvas(wrap,{backgroundColor: '#0e0f12', scale:2, useCORS:true});
       const dataURL=canvas.toDataURL('image/png');
+
+      // 3) 다운로드
       const a=document.createElement('a'); a.href=dataURL; a.download='basedapp_checker_result.png';
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+      // 4) 정리
+      document.body.removeChild(wrap);
+
       const b=$("saveImg"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200);
     }
 
     // 저장/복원
     const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross"];
-    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_checker_v1",JSON.stringify(obj)); };
+    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_checker_v2",JSON.stringify(obj)); };
     function loadInputs(){
-      const raw=localStorage.getItem("basedapp_checker_v1"); if(!raw) return;
+      const raw=localStorage.getItem("basedapp_checker_v2"); if(!raw) return;
       try{ const obj=JSON.parse(raw); if(obj.mode) $("mode").value=obj.mode; populateTier();
         KEYS.forEach(k=>{ if(obj[k]!==undefined && k!=="mode") $(k).value=obj[k]; }); updateFeeHint();
       }catch(e){}
