@@ -1,455 +1,506 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Basedapp Checker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <style>
-    :root{
-      color-scheme: dark light;
-      --bg:#0e0f12;            /* 배경 */
-      --panel:#16181d;         /* 카드 배경 */
-      --panel-solid:#121419;   /* 내보내기용 더 진한 불투명 */
-      --border:#242833;
-      --muted:#98a2af;
-      --accent:#ff6a3d;        /* 주황 (포커스/메인 버튼) */
-      --accent-2:#ff825c;      /* 주황 라이트 */
-      --ok:#2ad7a3;            /* 초록(리베이트/양수) */
-      --danger:#ff6b6b;        /* 빨강(지출) */
-      --ring: 0 0 0 3px rgba(255,106,61,.35);
-    }
-    body{ background:var(--bg); color:#e8eaee }
-    .card{ background:var(--panel); border:1px solid var(--border) }
-    .muted{ color:var(--muted) }
-    .btn{ background:var(--accent); color:white }
-    .btn:hover{ filter:brightness(1.05) }
-    .btn-ghost{ background:#1b1f26; border:1px solid var(--border); color:#e8eaee }
-    input,select{
-      background:#101217; border:1px solid var(--border); color:#e8eaee;
-      border-radius:12px; padding:.65rem .8rem; width:100%;
-    }
-    input:focus,select:focus{ outline:none; box-shadow:var(--ring); border-color:#3a414b }
-    .num{ font-variant-numeric:tabular-nums }
-    .badge{ background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; }
-    .kv{ display:flex; gap:.5rem; align-items:baseline }
-    .kv .k{ min-width:12.5rem; color:#aab2bd }
-    .kv .v{ font-weight:700 }
-    /* 결과 카드 강조 프레임 */
-    .frame {
-      position: relative; border-radius:18px; padding:4px;
-      background: linear-gradient(135deg, rgba(255,106,61,.7), rgba(255,130,92,.25));
-    }
-    .frame > .inner {
-      background:var(--panel); border-radius:16px; border:1px solid var(--border);
-    }
-    /* 등장 애니메이션 */
-    .fade-in { animation: fadeIn .28s ease-out both }
-    @keyframes fadeIn {
-      from { opacity:0; transform: translateY(6px) }
-      to   { opacity:1; transform: translateY(0) }
-    }
+# based_trade.py — Based 지정가 자동 매매 (미체결 전부 취소 / 최소 보유 / 포지션 탭 청산 / 무콘솔 팝업 대기 / 파일 로깅)
+# - 창 크기 1440x1080
+# - 진입: 오더북 가격 클릭 → 75% → 주문하기(지정가). 체결 지연 시 미체결 전부 취소 후 재주문
+# - 보유: 최소 160~200초(약 5~6분)
+# - 청산: 포지션 탭에서 청산 버튼 클릭(시장가 닫기/지정가 종료 시도). 미체결 취소는 하지 않으며, 실패 시 새로고침 후 재시도
+# - 잔액 종료: 포지션 0개일 때만, 잔액이 임계값 이하가 연속 N회 감지되면 종료
+# - 콘솔 숨김 빌드용: input() 사용 안 함. Tk 팝업으로 로그인/지갑 연결 대기
+#
+# 빌드 예시(콘솔 숨김):
+#   pyinstaller --onefile --noconsole based_trade.py
+#
+# 실행 로그 기준 파일: based_trade.log
 
-    /* === 내보내기용(캡처 전용) 순수 카드 스타일 === */
-    .export-wrap {
-      background: var(--bg);
-      padding: 24px;
-      border-radius: 20px;
-      width: fit-content;
-    }
-    .export-card {
-      background: var(--panel-solid);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      width: 720px; /* 결과 이미지 가독성 좋은 고정 폭 */
-    }
-    .export-title { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem }
-    .export-badges { margin-left:.5rem; display:flex; gap:.5rem; align-items:center }
-    .export-kv { display:flex; gap:.5rem; align-items:baseline; }
-    .export-k { min-width:12.5rem; color:#aab2bd }
-    .export-v { font-weight:700 }
-    .export-hr { border-top:1px solid #2b2f36; margin:.75rem 0 }
-    .export-badge { background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; font-size:12px }
-  </style>
-</head>
-<body>
-  <header class="max-w-5xl mx-auto px-4 py-7">
-    <div class="rounded-3xl border border-[var(--accent)]/60 p-3 mx-auto w-fit">
-      <div class="rounded-2xl px-5 py-3 bg-[var(--panel)] text-center">
-        <h1 class="text-2xl font-semibold">Basedapp Checker</h1>
-      </div>
-    </div>
-    <p class="mt-3 muted text-sm leading-6">
-      • <b>이전/현재 포인트만</b> 입력 시 → 포인트 차이로 <b>필요 거래량</b> 역산<br/>
-      • <b>이전/현재 거래량만</b> 입력 시 → 거래량 차이로 <b>획득 XP</b> 계산<br/>
-      • <b>총 수수료(누적)</b> 이전/현재를 넣으면 차이로 이번 구간 <b>총 수수료(리베이트 전)</b> 사용<br/>
-      • 리베이트(60%)는 결과에서만 적용. <b>수수료 미입력 시 Taker 비중은 ‘—’</b>로 표시
-    </p>
-  </header>
+import os, time, random, re, sys, json
+import tkinter as tk
+from tkinter import messagebox
+import logging
 
-  <main class="max-w-5xl mx-auto px-4 pb-28 space-y-6">
-    <!-- 입력 -->
-    <section class="card rounded-2xl p-4 space-y-4">
-      <div class="grid sm:grid-cols-3 gap-3 items-end">
-        <label class="block">
-          <span class="block text-xs muted">거래 방식</span>
-          <select id="mode">
-            <option value="perps">선물 (Perps)</option>
-            <option value="spot">현물 (Spot)</option>
-          </select>
-        </label>
-        <label class="block">
-          <span class="block text-xs muted">XP 부스트</span>
-          <select id="boost">
-            <option value="0">0%</option>
-            <option value="25">25%</option>
-            <option value="50">50%</option>
-            <option value="60" selected>60%</option>
-          </select>
-        </label>
-        <label class="block">
-          <span class="block text-xs muted">14일 가중 거래량 Tier</span>
-          <select id="tier"></select>
-          <p class="text-[11px] muted mt-1" id="feeHint"></p>
-        </label>
-      </div>
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    WebDriverException, TimeoutException, NoSuchElementException, ElementClickInterceptedException
+)
+from selenium.webdriver.common.action_chains import ActionChains
+from webdriver_manager.chrome import ChromeDriverManager
 
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block">
-          <span class="block text-xs muted">이전 거래량 (누적, $)</span>
-          <input id="prevVol" type="number" step="0.01" placeholder="예: 0 또는 200000" />
-        </label>
-        <label class="block">
-          <span class="block text-xs muted">현재 거래량 (누적, $)</span>
-          <input id="currVol" type="number" step="0.01" placeholder="예: 10000 또는 290000" />
-        </label>
-      </div>
+# ===== 로깅 =====
+logging.basicConfig(
+    filename="based_trade.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+log = logging.getLogger("based")
 
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block">
-          <span class="block text-xs muted">이전 포인트 (누적)</span>
-          <input id="prevPts" type="number" step="0.01" placeholder="예: 0 또는 12000" />
-        </label>
-        <label class="block">
-          <span class="block text-xs muted">현재 포인트 (누적)</span>
-          <input id="currPts" type="number" step="0.01" placeholder="예: 540 또는 20000" />
-        </label>
-      </div>
+# ===== 기본 설정 =====
+URL = "https://basedapp.io/BTC"
 
-      <!-- 고급 옵션: 총 수수료(누적) → 차이 -->
-      <details class="rounded-xl bg-[#101216] border border-[#2a2f36] p-3">
-        <summary class="cursor-pointer select-none muted text-sm">
-          ▾ 고급 옵션(선택): 이전/현재 <b>총 수수료(누적)</b> 입력 → 사용 구간 총 수수료 자동 계산
-        </summary>
-        <div class="grid sm:grid-cols-2 gap-3 mt-3">
-          <label class="block">
-            <span class="block text-xs muted">이전 총 수수료 (누적, $)</span>
-            <input id="prevFeeGross" type="number" step="0.01" placeholder="예: 0 또는 25.3" />
-          </label>
-          <label class="block">
-            <span class="block text-xs muted">현재 총 수수료 (누적, $)</span>
-            <input id="currFeeGross" type="number" step="0.01" placeholder="예: 4.0 또는 409.1" />
-          </label>
-        </div>
-        <p class="text-[11px] muted mt-2">
-          ※ 입력 시 두 값의 차이로 이번 구간 <b>총 수수료(리베이트 전)</b>이 자동 계산됩니다.
-          리베이트(60%)는 결과에서만 반영합니다.
-        </p>
-      </details>
+# 새 크롬 사용자 프로필(권장: 기존 브라우저와 분리)
+USER_DATA_DIR = os.path.abspath("./based_profile")
+PROFILE_DIR   = "Default"
 
-      <div class="flex flex-wrap gap-2">
-        <button id="calc" class="btn px-4 py-2 rounded-xl font-semibold">계산하기</button>
-        <button id="save" class="btn-ghost px-4 py-2 rounded-xl">입력값 저장</button>
-        <button id="reset" class="btn-ghost px-4 py-2 rounded-xl">초기화</button>
-      </div>
-    </section>
+WINDOW_W, WINDOW_H = 1440, 1080
 
-    <!-- 결과 -->
-    <section id="resultCard" class="frame fade-in">
-      <div class="inner rounded-2xl p-4 space-y-3 relative">
-        <div class="flex items-center gap-2 pr-32">
-          <h3 class="font-semibold text-lg">결과</h3>
-          <span class="badge text-xs" id="modeBadge">Perps · Tier 0</span>
-          <span class="badge text-xs" id="feeBadge">Maker/Taker: -</span>
-        </div>
-        <div class="absolute right-3 top-3 flex gap-2">
-          <button id="copy" class="btn-ghost px-3 py-1.5 rounded-lg text-sm">복사</button>
-          <button id="saveImg" class="btn-ghost px-3 py-1.5 rounded-lg text-sm">PNG 저장</button>
-        </div>
-        <div id="out" class="space-y-2"></div>
-        <p class="text-[11px] muted">
-          평균 수수료율은 기본적으로 <b>Maker</b>만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과
-          <b>추정 Taker 비중</b>을 역산하여 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.
-        </p>
-      </div>
-    </section>
-  </main>
+# 잔액 종료 관련
+ENABLE_BALANCE_STOP    = True      # False → 잔액 종료 비활성화
+BALANCE_STOP           = 10.0      # 포지션 0일 때 잔액이 이하면 종료
+LOW_BAL_CONSEC_NEED    = 2         # 연속 감지 횟수
 
-  <script>
-    // 수수료표 (소수)
-    const FEES = {
-      perps: { tiers: [
-        { name: "Tier 0 (기본)", taker: 0.00045, maker: 0.00015 },
-        { name: "Tier 1 (>5M)", taker: 0.00040, maker: 0.00012 },
-        { name: "Tier 2 (>25M)", taker: 0.00035, maker: 0.00008 },
-        { name: "Tier 3 (>100M)", taker: 0.00030, maker: 0.00004 },
-        { name: "Tier 4 (>500M)", taker: 0.00028, maker: 0.00000 },
-        { name: "Tier 5 (>2B)", taker: 0.00026, maker: 0.00000 },
-        { name: "Tier 6 (>7B)", taker: 0.00024, maker: 0.00000 },
-      ]},
-      spot: { tiers: [
-        { name: "Tier 0 (기본)", taker: 0.00070, maker: 0.00040 },
-        { name: "Tier 1 (>5M)", taker: 0.00060, maker: 0.00030 },
-        { name: "Tier 2 (>25M)", taker: 0.00050, maker: 0.00020 },
-        { name: "Tier 3 (>100M)", taker: 0.00040, maker: 0.00010 },
-        { name: "Tier 4 (>500M)", taker: 0.00035, maker: 0.00000 },
-        { name: "Tier 5 (>2B)", taker: 0.00030, maker: 0.00000 },
-        { name: "Tier 6 (>7B)", taker: 0.00025, maker: 0.00000 },
-      ]},
-    };
+# 주문/보유/재시도 파라미터
+PRICE_IDX          = 2
+ORDER_RETRY        = 3
+MAX_FILL_WAIT      = 60            # 체결 대기 상한(초)
+UI_DELAY           = 0.8
+AFTER_75P_DELAY    = 1.5
 
-    // XP/$ 기본 효율 (부스트 0%)
-    const XP_PER_DOLLAR_BASE = { perps: 0.03375, spot: 0.1266 };
-    const xpPerDollar = (mode, boostPct)=> (XP_PER_DOLLAR_BASE[mode]||0) * (1 + (boostPct||0)/100);
+# 최소 보유 시간(초)
+HOLD_MIN_SEC, HOLD_MAX_SEC = 160, 200
 
-    const $ = (id)=>document.getElementById(id);
-    const d2 = (n)=> Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-    const d4 = (n)=> Number(n||0).toLocaleString(undefined,{minimumFractionDigits:4,maximumFractionDigits:4});
+# 새로고침/안정화
+REFRESH_TRIES         = 3
+REFRESH_STABILIZE_S   = 5          # 요청에 따라 5초로 단축
+LOOP_STAB_MIN, LOOP_STAB_MAX = 8, 15
+RETRY_PAUSE           = 1.2
 
-    function populateTier(){
-      const mode = $("mode").value, sel = $("tier"); sel.innerHTML = "";
-      FEES[mode].tiers.forEach((t,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=t.name; sel.appendChild(o); });
-      sel.value = 0; updateFeeHint();
-    }
-    function updateFeeHint(){
-      const mode = $("mode").value, t=FEES[mode].tiers[Number($("tier").value)];
-      $("feeHint").textContent = `Taker ${ (t.taker*100).toFixed(3) }% · Maker ${ (t.maker*100).toFixed(3) }%`;
-      $("feeBadge").textContent = `Maker/Taker: ${(t.maker*100).toFixed(3)}% / ${(t.taker*100).toFixed(3)}%`;
-      $("modeBadge").textContent = `${mode==='perps'?'Perps':'Spot'} · ${t.name}`;
-    }
-    $("mode").addEventListener("change", populateTier);
-    $("tier").addEventListener("change", updateFeeHint);
+# ===== 셀렉터 / XPATH =====
+SEL_ORDERBOOK_PRICE = "div.z-10.flex.items-center.gap-1.font-medium.text-trading-textUp"
 
-    let _lastResult=null;
+# 주문 버튼
+SEL_BTN_SUBMIT      = "#trade-action-button-action"
+XPATH_BTN_SUBMIT_FALLBACKS = [
+    "//button[@id='trade-action-button-action']",
+    "//button[contains(@class,'button-buy') and (contains(., '주문하기') or contains(., 'Place Order'))]",
+    "//div[contains(@class,'button-buy-content')][contains(.,'주문하기') or contains(.,'Place Order')]",
+    "//div[contains(@class,'button-sell-content')][contains(.,'주문하기') or contains(.,'Place Order')]",
+]
 
-    function compute(){
-      const mode = $("mode").value;
-      const tierIdx = Number($("tier").value);
-      const fee = FEES[mode].tiers[tierIdx];
-      const makerFee = fee.maker, takerFee = fee.taker;
-      const boost = Number($("boost").value||0);
+# 잔액/포지션
+SEL_BALANCE_USDC    = "div.trading-font-number.text-trading-textPrimary.text-sm"
+XPATH_POS_TAB       = ("//button[contains(@class,'font-medium') and "
+                       "(contains(., '포지션') or contains(., 'Positions'))]")
 
-      // 입력 (빈칸은 0으로 처리)
-      const prevVol = Number($("prevVol").value || 0);
-      const currVol = Number($("currVol").value || 0);
-      const prevPts = Number($("prevPts").value || 0);
-      const currPts = Number($("currPts").value || 0);
-      const prevFeeGross = Number($("prevFeeGross").value || 0);
-      const currFeeGross = Number($("currFeeGross").value || 0);
+# 비중 버튼
+XPATH_BTN_75P       = "//button[normalize-space()='75%']"
 
-      // 0도 유효값: 둘 다 >=0이면 차이 계산
-      const deltaVol = (currVol >= 0 && prevVol >= 0) ? Math.max(0, currVol - prevVol) : 0;
-      const deltaPts = (currPts >= 0 && prevPts >= 0) ? Math.max(0, currPts - prevPts) : 0;
+# 포지션 탭 내 청산 버튼 후보(시장가 닫기 / 지정가 종료 등)
+XPATH_CLOSE_CANDIDATES = [
+    "//button[contains(.,'시장가 닫기')]",
+    "//button[contains(.,'지정가 종료')]",
+    "//button[contains(.,'Close') and contains(.,'Market')]",
+    "//button[contains(.,'Close') and contains(.,'Limit')]",
+]
 
-      const eff = xpPerDollar(mode, boost); // XP/$
+# 미체결 취소 후보
+CANCEL_CSS_CANDIDATES = [
+    "button[title*='주문 취소']",
+    "button[data-tooltip-content*='주문 취소']",
+    "button[data-tooltip-id*='order']",
+    "button.text-red-400",
+    "button.text-red-500",
+    "button.text-destructive",
+    "button[aria-label*='Cancel']",
+    "button[title*='Cancel']",
+]
+CANCEL_XPATH_CANDIDATES = [
+    "//button[contains(., '취소')]",
+    "//button[contains(., 'Cancel')]",
+    "//button[contains(@class, 'text-red')]",
+    "//button[contains(@class, 'text-destructive')]",
+]
 
-      let usedVol = 0, usedPts = 0;
-      if (deltaVol>0 && deltaPts>0){
-        usedVol = deltaVol; usedPts = deltaPts;
-      } else if (deltaPts>0){
-        usedPts = deltaPts; usedVol = eff>0 ? usedPts/eff : 0;
-      } else if (deltaVol>0){
-        usedVol = deltaVol; usedPts = usedVol*eff;
-      } else {
-        $("out").innerHTML = `<div class="text-sm muted">이전/현재 포인트 또는 거래량 중 하나의 쌍이라도 입력해 주세요.</div>`;
-        _lastResult=null; return;
-      }
+# ===== Tk 팝업: 로그인/지갑 연결 대기 =====
+def wait_for_login_popup():
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showinfo("시작 준비", "Based에 로그인/지갑 연결을 완료한 뒤 [확인]을 누르세요.")
+    try:
+        root.destroy()
+    except:
+        pass
 
-      // 총 수수료(리베이트 전): 기본 Maker 가정, 누적차이 있으면 덮어쓰기
-      let feeGross = usedVol * makerFee;
-      const feeGrossInput = (currFeeGross >= 0 && prevFeeGross >= 0) ? Math.max(0, currFeeGross - prevFeeGross) : 0;
-      const feeByUser = feeGrossInput>0 || (currFeeGross>0 || prevFeeGross>0);
-      if (feeByUser) feeGross = feeGrossInput;
+# ===== 유틸 =====
+def q(d, css, t=30):
+    return WebDriverWait(d, t).until(EC.presence_of_element_located((By.CSS_SELECTOR, css)))
 
-      // 평균 수수료율
-      const avgFeeRate = usedVol>0 ? (feeGross/usedVol) : 0;
+def qa(d, css, t=30):
+    WebDriverWait(d, t).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, css)))
+    return d.find_elements(By.CSS_SELECTOR, css)
 
-      // Taker 비중(수수료 입력 없으면 표시하지 않음)
-      let takerShareText = "— (수수료 입력 필요)";
-      let takerShareVal = null;
-      if (feeByUser && usedVol>0 && takerFee!==makerFee){
-        const share = Math.min(1, Math.max(0, (avgFeeRate - makerFee) / (takerFee - makerFee)));
-        takerShareVal = share; takerShareText = `${d2(share*100)} %`;
-      }
+def click_el(d, el):
+    d.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+    time.sleep(0.08)
+    try:
+        el.click()
+    except ElementClickInterceptedException:
+        d.execute_script("arguments[0].click();", el)
 
-      // 리베이트 60% (결과만)
-      const rebateRate = 0.60, rebateAmt=feeGross*rebateRate, feeNet=feeGross-rebateAmt;
+def robust_click_submit(driver, timeout=8):
+    try:
+        btn = WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, SEL_BTN_SUBMIT))
+        )
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        time.sleep(0.1)
+        driver.execute_script("arguments[0].click();", btn)
+        return True
+    except Exception:
+        pass
+    for xp in XPATH_BTN_SUBMIT_FALLBACKS:
+        try:
+            btn = WebDriverWait(driver, 3).until(EC.element_to_be_clickable((By.XPATH, xp)))
+            try:
+                btn.click()
+            except ElementClickInterceptedException:
+                driver.execute_script("arguments[0].click();", btn)
+            return True
+        except Exception:
+            continue
+    try:
+        btn = driver.find_element(By.CSS_SELECTOR, SEL_BTN_SUBMIT)
+        ActionChains(driver).move_to_element(btn).pause(0.05).click().perform()
+        return True
+    except Exception:
+        return False
 
-      // 효율
-      const xpEfficiency = usedVol>0 ? usedPts/usedVol : 0;
-      const volPerXp = usedPts>0 ? usedVol/usedPts : 0;
+def get_balance(d):
+    el = q(d, SEL_BALANCE_USDC, 10)
+    raw = el.text.strip().split()[0]
+    try:
+        return float(raw.replace(",", ""))
+    except:
+        return 0.0
 
-      // 기대 효율 대비 편차(둘 다 입력된 경우만)
-      let effNote="";
-      if ((currVol>0 || prevVol>=0) && (currPts>0 || prevPts>=0) && deltaVol>0 && deltaPts>0){
-        const expectedEff = eff;
-        const diffPct = expectedEff>0 ? ((xpEfficiency-expectedEff)/expectedEff*100) : 0;
-        effNote = ` (기대 ${d4(expectedEff)} 대비 ${diffPct>=0?"+":""}${d2(diffPct)}%)`;
-      }
+def get_positions_count(d):
+    try:
+        el = WebDriverWait(d, 10).until(EC.presence_of_element_located((By.XPATH, XPATH_POS_TAB)))
+        m = re.search(r"\((\d+)\)", el.text)
+        return int(m.group(1)) if m else 0
+    except (TimeoutException, NoSuchElementException):
+        return 0
 
-      const rows=[];
-      rows.push(`<div class="kv"><span class="k">사용 거래량</span><span class="v num text-[1.05rem]">${d2(usedVol)} $</span></div>`);
-      rows.push(`<div class="kv"><span class="k">획득 XP</span><span class="v num text-[1.05rem]">${d2(usedPts)} XP</span></div>`);
-      rows.push(`<div class="kv"><span class="k">XP 효율</span><span class="v num">${d4(xpEfficiency)} XP/$${effNote}</span></div>`);
-      rows.push(`<div class="kv"><span class="k">1 XP당 거래량</span><span class="v num">${d4(volPerXp)} $/XP</span></div>`);
-      rows.push(`<hr class="my-3 border-[#2b2f36]" />`);
-      rows.push(`<div class="kv"><span class="k">총 수수료(리베이트 전)</span><span class="v num">${d2(feeGross)} $</span></div>`);
-      rows.push(`<div class="kv"><span class="k">평균 수수료율</span><span class="v num">${d4(avgFeeRate*100)} %</span></div>`);
-      rows.push(`<div class="kv"><span class="k">추정 Taker 비중</span><span class="v num">${takerShareText}</span></div>`);
-      rows.push(`<div class="kv"><span class="k">셀프레퍼럴 수익(60%)</span><span class="v num text-[var(--ok)]">${d2(rebateAmt)} $</span></div>`);
-      rows.push(`<div class="kv"><span class="k">실제 낸 수수료(리베이트 후)</span><span class="v num text-[var(--danger)]">${d2(feeNet)} $</span></div>`);
-      const costPerXp = usedPts>0 ? (feeNet/usedPts) : 0;
-      rows.push(`<div class="kv"><span class="k">1 XP당 실질 비용(수수료만)</span><span class="v num">${d4(costPerXp)} $/XP</span></div>`);
-      $("out").innerHTML = `<div class="space-y-1 fade-in">${rows.join("")}</div>`;
+def goto_positions_tab(driver, timeout=8):
+    XPATHS = [
+        XPATH_POS_TAB,
+        "//button[contains(.,'포지션') or contains(.,'Positions')]",
+        "//*[self::button or self::a][contains(.,'포지션') or contains(.,'Positions')]",
+    ]
+    for xp in XPATHS:
+        try:
+            el = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, xp)))
+            click_el(driver, el)
+            time.sleep(0.2)
+            return True
+        except Exception:
+            continue
+    return False
 
-      _lastResult = {
-        mode: mode==='perps' ? 'Perps' : 'Spot',
-        tier: FEES[mode].tiers[tierIdx].name,
-        makerFee, takerFee, boost,
-        usedVol, usedPts, xpEfficiency, volPerXp,
-        feeGross, avgFeeRate, takerShareVal,
-        rebateRate, rebateAmt, feeNet, costPerXp
-      };
+def click_any_close_in_positions(driver):
+    """포지션 탭에서 청산 버튼(시장가 닫기/지정가 종료 등) 아무거나 눌러본다."""
+    if not goto_positions_tab(driver):
+        return False
+    for xp in XPATH_CLOSE_CANDIDATES:
+        try:
+            el = WebDriverWait(driver, 3).until(EC.element_to_be_clickable((By.XPATH, xp)))
+            click_el(driver, el)
+            return True
+        except Exception:
+            continue
+    return False
 
-      updateFeeHint();
-    }
+def wait_until(d, cond_fn, timeout=MAX_FILL_WAIT, poll=1.5, desc=""):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        try:
+            if cond_fn():
+                return True
+        except Exception:
+            pass
+        time.sleep(poll)
+    log.info(f"[대기 타임아웃] {desc} ({timeout}s)")
+    return False
 
-    function copyResultToClipboard(){
-      if (!_lastResult){ compute(); if(!_lastResult) return; }
-      const r=_lastResult;
-      const takerLine = (r.takerShareVal==null) ? "— (수수료 입력 필요)" : `${d2(r.takerShareVal*100)} %`;
-      const lines=[
-        `=== Basedapp Checker — 결과 요약 ===`,
-        `모드: ${r.mode} · ${r.tier} · Boost ${r.boost}%`,
-        `수수료(M/T): ${(r.makerFee*100).toFixed(3)}% / ${(r.takerFee*100).toFixed(3)}%`,
-        ``,
-        `사용 거래량: ${d2(r.usedVol)} $`,
-        `획득 XP: ${d2(r.usedPts)} XP`,
-        `XP 효율: ${d4(r.xpEfficiency)} XP/$`,
-        `1 XP당 거래량: ${d4(r.volPerXp)} $/XP`,
-        ``,
-        `총 수수료(리베이트 전): ${d2(r.feeGross)} $`,
-        `평균 수수료율: ${d4(r.avgFeeRate*100)} %`,
-        `추정 Taker 비중: ${takerLine}`,
-        `셀프레퍼럴 수익(${Math.round(r.rebateRate*100)}%): ${d2(r.rebateAmt)} $`,
-        `실제 낸 수수료(리베이트 후): ${d2(r.feeNet)} $`,
-        `1 XP당 실질 비용(수수료만): ${d4(r.costPerXp)} $/XP`
-      ].join('\n');
+def click_75_percent(driver):
+    try:
+        btn = WebDriverWait(driver, 8).until(EC.element_to_be_clickable((By.XPATH, XPATH_BTN_75P)))
+        click_el(driver, btn)
+        time.sleep(UI_DELAY)
+        return True
+    except Exception:
+        return False
 
-      const done=()=>{ const b=$("copy"); const t=b.textContent; b.textContent="복사됨 ✅"; setTimeout(()=>b.textContent=t,1200); };
-      if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(lines).then(done).catch(()=>fallback()); }
-      else fallback();
-      function fallback(){
-        const ta=document.createElement('textarea'); ta.value=lines; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done();
-      }
-    }
+def find_cancel_buttons(driver):
+    found = []
+    for css in CANCEL_CSS_CANDIDATES:
+        try:
+            found.extend(driver.find_elements(By.CSS_SELECTOR, css))
+        except Exception:
+            pass
+    for xp in CANCEL_XPATH_CANDIDATES:
+        try:
+            found.extend(driver.find_elements(By.XPATH, xp))
+        except Exception:
+            pass
+    try:
+        js_nodes = driver.execute_script("""
+            const sels = [
+              "button[title*='취소']","button[title*='cancel']",
+              "button[aria-label*='취소']","button[aria-label*='Cancel']",
+              "button.text-red-400","button.text-red-500","button.text-destructive"
+            ];
+            let out = [];
+            for (const s of sels) {
+              document.querySelectorAll(s).forEach(b => out.push(b));
+            }
+            return out;
+        """)
+        if js_nodes:
+            found.extend(js_nodes)
+    except Exception:
+        pass
+    uniq, seen = [], set()
+    for el in found:
+        try:
+            key = (el.id, el.get_attribute("outerHTML")[:100])
+        except Exception:
+            key = id(el)
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(el)
+    return uniq
 
-    // 내보내기: 그라디언트/투명 제거한 클론 노드로 캡처
-    async function saveResultAsPng(){
-      if(!_lastResult){ compute(); if(!_lastResult) return; }
-      const src = document.getElementById('resultCard');
+def cancel_open_orders(driver, max_click=60, passes=3, settle=0.2):
+    total = 0
+    for _ in range(passes):
+        btns = find_cancel_buttons(driver)
+        clicked_this = 0
+        for btn in btns:
+            if total >= max_click:
+                break
+            try:
+                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+                time.sleep(0.05)
+                try:
+                    btn.click()
+                except ElementClickInterceptedException:
+                    driver.execute_script("arguments[0].click();", btn)
+                clicked_this += 1
+                total += 1
+                time.sleep(settle)
+            except Exception:
+                continue
+        if clicked_this == 0:
+            break
+    if total:
+        log.info(f"미체결 취소 {total}건 처리")
+    else:
+        log.info("취소할 미체결 없음/탐색 실패")
+    return total
 
-      // 1) 내보내기용 DOM 구성
-      const wrap = document.createElement('div');
-      wrap.className = 'export-wrap';
-      const card = document.createElement('div');
-      card.className = 'export-card';
-      wrap.appendChild(card);
+def cancel_all_open_orders_strict(driver, max_rounds=5, settle=0.25):
+    total = 0
+    for _ in range(max_rounds):
+        clicked = cancel_open_orders(driver, max_click=200, passes=3, settle=settle)
+        total += clicked
+        time.sleep(settle)
+        if clicked == 0:
+            driver.refresh()
+            stabilize_after_refresh()
+            clicked2 = cancel_open_orders(driver, max_click=200, passes=2, settle=settle)
+            total += clicked2
+            if clicked2 == 0:
+                break
+    log.info(f"엄격 취소 총 {total}건")
+    return total
 
-      // 헤더
-      const head = document.createElement('div');
-      head.className = 'export-title';
-      const h = document.createElement('div');
-      h.textContent = '결과';
-      h.style.fontWeight = '700';
-      h.style.fontSize = '18px';
-      head.appendChild(h);
+def stabilize_after_refresh():
+    log.info(f"새로고침 안정화 {REFRESH_STABILIZE_S}s")
+    time.sleep(REFRESH_STABILIZE_S)
 
-      const badges = document.createElement('div');
-      badges.className = 'export-badges';
-      const b1 = document.createElement('span'); b1.className='export-badge'; b1.textContent = document.getElementById('modeBadge').textContent;
-      const b2 = document.createElement('span'); b2.className='export-badge'; b2.textContent = document.getElementById('feeBadge').textContent;
-      badges.appendChild(b1); badges.appendChild(b2);
-      head.appendChild(badges);
-      card.appendChild(head);
+def loop_stabilize_pause():
+    t = random.randint(LOOP_STAB_MIN, LOOP_STAB_MAX)
+    log.info(f"루프 종료 후 안정화 대기 {t}s")
+    time.sleep(t)
 
-      // 본문 (텍스트만 이식)
-      const out = document.getElementById('out');
-      if(!out || !out.firstChild){ compute(); }
-      const tmp = document.createElement('div'); tmp.innerHTML = out.innerHTML;
+# ===== 드라이버 =====
+def init_driver():
+    os.makedirs(USER_DATA_DIR, exist_ok=True)
+    opts = Options()
+    opts.add_argument(f"--user-data-dir={USER_DATA_DIR}")
+    opts.add_argument(f"--profile-directory={PROFILE_DIR}")
+    opts.add_argument(f"--window-size={WINDOW_W},{WINDOW_H}")
+    opts.add_experimental_option("excludeSwitches", ["enable-automation"])
+    opts.add_experimental_option("useAutomationExtension", False)
+    opts.add_experimental_option("detach", True)
+    # 크롬 알림 줄이기(선택)
+    opts.add_argument("--disable-notifications")
+    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opts)
 
-      // 클래스 교체
-      tmp.querySelectorAll('.kv').forEach(el=>{
-        el.className = 'export-kv';
-        const k = el.querySelector('.k'); if(k) k.className='export-k';
-        const v = el.querySelector('.v'); if(v) v.className='export-v num';
-      });
+# ===== 메인 =====
+def main():
+    try:
+        driver = init_driver()
+    except WebDriverException as e:
+        if "user data directory is already in use" in str(e):
+            msg = "같은 프로필을 쓰는 크롬이 열려 있음. 모든 크롬 종료하거나 전용 프로필 경로를 사용하세요."
+            log.error(msg)
+            # 무콘솔 환경에서 사용자 안내
+            try:
+                root = tk.Tk(); root.withdraw()
+                messagebox.showerror("오류", msg)
+                root.destroy()
+            except:
+                pass
+            sys.exit(1)
+        raise
 
-      // 강조 색상 유지
-      tmp.querySelectorAll('[style*="var(--ok)"]').forEach(el=>{ el.style.color = 'var(--ok)'; });
-      tmp.querySelectorAll('[style*="var(--danger)"]').forEach(el=>{ el.style.color = 'var(--danger)'; });
-      tmp.querySelectorAll('hr').forEach(hr=>{ const d=document.createElement('div'); d.className='export-hr'; hr.replaceWith(d); });
+    driver.get(URL)
+    wait_for_login_popup()
 
-      card.appendChild(tmp);
+    low_bal_streak = 0
 
-      // 푸터 문구
-      const foot = document.createElement('div');
-      foot.className='muted';
-      foot.style.fontSize='11px';
-      foot.style.marginTop='6px';
-      foot.textContent = '평균 수수료율은 기본적으로 Maker만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과 추정 Taker 비중을 역산해 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.';
-      card.appendChild(foot);
+    while True:
+        try:
+            bal = get_balance(driver)
+            pos_n = get_positions_count(driver)
+            log.info(f"[잔액] {bal:.2f} USDC | [포지션] {pos_n}개")
 
-      // 2) 문서에 붙여서 캔버스 생성
-      document.body.appendChild(wrap);
-      const canvas=await html2canvas(wrap,{backgroundColor: '#0e0f12', scale:2, useCORS:true});
-      const dataURL=canvas.toDataURL('image/png');
+            # 잔액 종료(포지션 0일 때만)
+            if ENABLE_BALANCE_STOP and pos_n == 0:
+                if bal <= BALANCE_STOP:
+                    low_bal_streak += 1
+                    log.info(f"낮은 잔액 감지 {low_bal_streak}/{LOW_BAL_CONSEC_NEED}")
+                else:
+                    low_bal_streak = 0
+                if low_bal_streak >= LOW_BAL_CONSEC_NEED:
+                    log.info(f"(포지션 0개) 잔액 {BALANCE_STOP} 이하 {LOW_BAL_CONSEC_NEED}회 연속 → 종료")
+                    break
 
-      // 3) 다운로드
-      const a=document.createElement('a'); a.href=dataURL; a.download='basedapp_checker_result.png';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            # ===== 진입 루틴 =====
+            success_entry = False
+            planned_exit_at = None
 
-      // 4) 정리
-      document.body.removeChild(wrap);
+            for attempt in range(1, ORDER_RETRY + 1):
+                try:
+                    cancel_all_open_orders_strict(driver)
 
-      const b=$("saveImg"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200);
-    }
+                    rows = qa(driver, SEL_ORDERBOOK_PRICE, 20)
+                    idx = max(1, min(PRICE_IDX, len(rows))) - 1
+                    click_el(driver, rows[idx])
+                    time.sleep(0.25)
 
-    // 저장/복원
-    const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross"];
-    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_checker_v2",JSON.stringify(obj)); };
-    function loadInputs(){
-      const raw=localStorage.getItem("basedapp_checker_v2"); if(!raw) return;
-      try{ const obj=JSON.parse(raw); if(obj.mode) $("mode").value=obj.mode; populateTier();
-        KEYS.forEach(k=>{ if(obj[k]!==undefined && k!=="mode") $(k).value=obj[k]; }); updateFeeHint();
-      }catch(e){}
-    }
-    function resetAll(){
-      ["prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross"].forEach(id=>$(id).value="");
-      $("boost").value="60"; $("mode").value="perps"; populateTier(); $("out").innerHTML=""; _lastResult=null;
-    }
+                    if not click_75_percent(driver):
+                        log.info(f"[진입 재시도 {attempt}] 75% 클릭 실패")
+                        time.sleep(RETRY_PAUSE); continue
 
-    $("calc").addEventListener("click", compute);
-    $("save").addEventListener("click", ()=>{ saveInputs(); compute(); });
-    $("reset").addEventListener("click", ()=>{ resetAll(); saveInputs(); });
-    $("copy").addEventListener("click", copyResultToClipboard);
-    $("saveImg").addEventListener("click", saveResultAsPng);
+                    time.sleep(AFTER_75P_DELAY)
+                    if not robust_click_submit(driver):
+                        log.info(f"[진입 재시도 {attempt}] 주문하기 클릭 실패")
+                        time.sleep(RETRY_PAUSE); continue
 
-    // 초기화
-    populateTier(); loadInputs(); updateFeeHint();
-  </script>
-</body>
-</html>
+                    log.info("[진입] 주문하기 → 체결 대기")
+                    if wait_until(driver, lambda: get_positions_count(driver) > 0,
+                                  timeout=MAX_FILL_WAIT, desc="진입 체결"):
+                        success_entry = True
+                        hold_sec = random.randint(HOLD_MIN_SEC, HOLD_MAX_SEC)
+                        planned_exit_at = time.monotonic() + hold_sec
+                        log.info(f"진입 체결 — 최소 보유 {hold_sec}s")
+                        break
+
+                    log.info(f"[진입 재시도 {attempt}] 체결 실패 → 미체결 전부 취소 후 재주문")
+                    cancel_all_open_orders_strict(driver)
+
+                except Exception as e:
+                    log.exception(f"[진입 재시도 {attempt}] 예외: {e}")
+
+                for i in range(REFRESH_TRIES):
+                    log.info(f"진입 실패 새로고침 {i+1}/{REFRESH_TRIES}")
+                    driver.refresh()
+                    stabilize_after_refresh()
+                    if get_positions_count(driver) > 0:
+                        success_entry = True
+                        hold_sec = random.randint(HOLD_MIN_SEC, HOLD_MAX_SEC)
+                        planned_exit_at = time.monotonic() + hold_sec
+                        log.info(f"새로고침 중 포지션 확인 — 최소 보유 {hold_sec}s")
+                        break
+                if success_entry:
+                    break
+
+            if not success_entry:
+                log.info("진입 실패 → 다음 루프")
+                loop_stabilize_pause()
+                continue
+
+            # ===== 최소 보유 =====
+            while time.monotonic() < planned_exit_at:
+                time.sleep(5)
+            log.info("최소 보유시간 경과 — 청산 루틴")
+
+            # ===== 청산 루틴(포지션 탭) =====
+            success_close = False
+            for attempt in range(1, ORDER_RETRY + 1):
+                try:
+                    if click_any_close_in_positions(driver):
+                        log.info(f"[청산] 포지션 탭 청산 클릭(시도 {attempt}) → 포지션 0 대기")
+                        if wait_until(driver, lambda: get_positions_count(driver) == 0,
+                                      timeout=MAX_FILL_WAIT, desc="청산"):
+                            success_close = True
+                            log.info("청산 완료(포지션 0)")
+                            break
+                        log.info("[청산] 체결 지연 → 동일 재시도 준비")
+                        time.sleep(RETRY_PAUSE)
+                    else:
+                        log.info("[청산] 포지션 탭 청산 버튼 탐색 실패")
+                except Exception as e:
+                    log.exception(f"[청산 시도 {attempt}] 예외: {e}")
+
+                for i in range(REFRESH_TRIES):
+                    log.info(f"청산 실패 새로고침 {i+1}/{REFRESH_TRIES}")
+                    driver.refresh()
+                    stabilize_after_refresh()
+                    try:
+                        if click_any_close_in_positions(driver):
+                            log.info("새로고침 후 청산 클릭")
+                    except Exception:
+                        pass
+                    if wait_until(driver, lambda: get_positions_count(driver) == 0,
+                                  timeout=MAX_FILL_WAIT, desc="청산"):
+                        success_close = True
+                        log.info("새로고침 중 포지션 0")
+                        break
+                if success_close:
+                    break
+
+            if not success_close:
+                log.info("청산 미확인 → 다음 루프(수동 확인 권장)")
+                loop_stabilize_pause()
+                continue
+
+            loop_stabilize_pause()
+
+        except WebDriverException as e:
+            log.error(f"WebDriver 예외: {e}")
+            # 브라우저가 사라졌다면 종료
+            try:
+                _ = driver.window_handles
+            except Exception:
+                log.info("브라우저가 닫혀 자동 종료합니다.")
+                break
+            # 그 외엔 재시도
+            time.sleep(3)
+
+        except Exception as e:
+            log.exception(f"[루프 예외] {e}")
+            try:
+                driver.refresh()
+                stabilize_after_refresh()
+            except Exception:
+                pass
+            loop_stabilize_pause()
+
+if __name__ == "__main__":
+    main()
