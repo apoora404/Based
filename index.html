@@ -1,166 +1,45 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Basedapp Checker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <style>
-    :root { color-scheme: dark; }
-    body { background:#0e0f12; color:#e5e7eb; font-family: ui-sans-serif,system-ui; }
-    .card { background:#111827; border:1px solid #1f2937; border-radius:1rem; padding:1rem; }
-    .btn { padding:.5rem 1rem; border-radius:.5rem; font-weight:600; }
-    .btn-primary { background:#6366f1; color:#fff; }
-    .btn-primary:hover { background:#4f46e5; }
-    .btn-secondary { background:#1f2937; color:#d1d5db; border:1px solid #374151; }
-    .btn-secondary:hover { background:#374151; }
+<script>
+  // 이미 html2canvas를 불러왔다고 가정 (없으면 <head>에 CDN 추가)
+  // <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-    /* 결과 레이아웃 */
-    .kv { display:flex; justify-content:space-between; padding:.25rem 0; }
-    .kv .k { color:#cbd4df; font-weight:600; }
-    .kv .v { color:#f3f6fb; font-weight:800; }
-    .divider { border-top:1px solid #374151; margin:.5rem 0; }
+  // PNG 저장 버튼
+  document.getElementById('save').addEventListener('click', async () => {
+    // 1) 화면에 보이는 결과 카드 루트 선택 (여기만 너의 셀렉터로 바꿔줘)
+    const src = document.querySelector('#out'); // ← 예시. 네 코드에 맞게 수정
 
-    /* --- 캡처용 카드 --- */
-    .export-card {
-      background:#111827;
-      border:1px solid #374151;
-      border-radius:1rem;
-      padding:1.5rem;
-      width:760px;
-      color:#ffffff !important;
-    }
-    .export-card * { color:#ffffff !important; }
-    .export-k { min-width:12.5rem; font-weight:600; color:#d6dee8 !important; }
-    .export-v { font-weight:800; font-size:18px; color:#ffffff !important; }
-    .export-hr { border-top:1px solid #4b5563; margin:.9rem 0 }
-  </style>
-</head>
-<body class="min-h-screen">
-  <header class="max-w-4xl mx-auto px-4 py-6 text-center">
-    <h1 class="text-2xl font-bold">📊 Basedapp Checker</h1>
-    <p class="mt-2 text-slate-400 text-sm">이전/현재 거래량·포인트 입력 시 → 사용 구간 거래량/XP/수수료/리베이트 자동 계산</p>
-  </header>
-
-  <main class="max-w-4xl mx-auto px-4 pb-28 space-y-5">
-    <section class="card space-y-4">
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block">
-          <span class="block text-xs text-slate-400">이전 거래량 ($, 누적)</span>
-          <input id="prevVol" type="number" step="0.01" placeholder="예: 200000" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-        </label>
-        <label class="block">
-          <span class="block text-xs text-slate-400">현재 거래량 ($, 누적)</span>
-          <input id="currVol" type="number" step="0.01" placeholder="예: 290000" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-        </label>
-      </div>
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block">
-          <span class="block text-xs text-slate-400">이전 포인트 (누적)</span>
-          <input id="prevPts" type="number" step="0.01" placeholder="예: 12000" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-        </label>
-        <label class="block">
-          <span class="block text-xs text-slate-400">현재 포인트 (누적)</span>
-          <input id="currPts" type="number" step="0.01" placeholder="예: 20000" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-        </label>
-      </div>
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block">
-          <span class="block text-xs text-slate-400">이전 총 수수료 ($)</span>
-          <input id="prevFee" type="number" step="0.01" placeholder="예: 50" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-        </label>
-        <label class="block">
-          <span class="block text-xs text-slate-400">현재 총 수수료 ($)</span>
-          <input id="currFee" type="number" step="0.01" placeholder="예: 120" class="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 p-2" />
-        </label>
-      </div>
-
-      <div class="flex gap-2 mt-4">
-        <button id="calc" class="btn btn-primary">계산하기</button>
-        <button id="reset" class="btn btn-secondary">초기화</button>
-        <button id="copy" class="btn btn-secondary">복사</button>
-        <button id="save" class="btn btn-secondary">PNG 저장</button>
-      </div>
-    </section>
-
-    <section class="card space-y-3">
-      <h3 class="font-semibold">결과</h3>
-      <div id="out" class="space-y-2"></div>
-    </section>
-  </main>
-
-  <script>
-    const MAKER_FEE = 0.00015; 
-    const TAKER_FEE = 0.00045; 
-
-    const $ = id => document.getElementById(id);
-
-    function compute(){
-      const prevVol = Number($("prevVol").value||0);
-      const currVol = Number($("currVol").value||0);
-      const prevPts = Number($("prevPts").value||0);
-      const currPts = Number($("currPts").value||0);
-      const prevFee = Number($("prevFee").value||0);
-      const currFee = Number($("currFee").value||0);
-
-      const usedVol = currVol - prevVol;
-      const usedPts = currPts - prevPts;
-      const usedFee = currFee - prevFee;
-
-      let xpEfficiency=0, volPerXp=0, totalFee=0, avgFeeRate=0, takerRatio="— (수수료 입력 필요)";
-      if(usedVol>0 && usedPts>0){
-        xpEfficiency = usedPts/usedVol;
-        volPerXp = usedVol/usedPts;
-      }
-
-      if(usedFee>0 && usedVol>0){
-        avgFeeRate = usedFee/usedVol;
-        totalFee = usedFee;
-        takerRatio = (((avgFeeRate-MAKER_FEE)/(TAKER_FEE-MAKER_FEE))*100).toFixed(2)+" %";
-      } else {
-        totalFee = usedVol * MAKER_FEE; 
-        avgFeeRate = MAKER_FEE;
-      }
-
-      const selfRefRev = totalFee * 0.6;
-      const netFee = totalFee - selfRefRev;
-      const costPerXp = usedPts>0? netFee/usedPts : 0;
-
-      const d2=n=>Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-      const d4=n=>Number(n).toLocaleString(undefined,{minimumFractionDigits:4,maximumFractionDigits:4});
-
-      const wrap=document.createElement("div");
-      wrap.className="export-card space-y-2";
-      wrap.innerHTML=`
-        <div class="font-bold text-lg">결과 
-          <span class="ml-2 px-2 py-0.5 rounded-full bg-slate-800 text-sm">Perps · Tier 0 (기본)</span>
-          <span class="ml-2 px-2 py-0.5 rounded-full bg-slate-800 text-sm">Maker/Taker: 0.015% / 0.045%</span>
-        </div>
-        <div class="export-kv"><span class="export-k">사용 거래량</span><span class="export-v">${d2(usedVol)} $</span></div>
-        <div class="export-kv"><span class="export-k">획득 XP</span><span class="export-v">${d2(usedPts)} XP</span></div>
-        <div class="export-kv"><span class="export-k">XP 효율</span><span class="export-v">${d4(xpEfficiency)} XP/$</span></div>
-        <div class="export-kv"><span class="export-k">1 XP당 거래량</span><span class="export-v">${d4(volPerXp)} $/XP</span></div>
-        <div class="export-hr"></div>
-        <div class="export-kv"><span class="export-k">총 수수료(리베이트 전)</span><span class="export-v">${d2(totalFee)} $</span></div>
-        <div class="export-kv"><span class="export-k">평균 수수료율</span><span class="export-v">${d4(avgFeeRate*100)} %</span></div>
-        <div class="export-kv"><span class="export-k">추정 Taker 비중</span><span class="export-v">${takerRatio}</span></div>
-        <div class="export-kv"><span class="export-k">셀프레퍼럴 수익(60%)</span><span class="export-v">${d2(selfRefRev)} $</span></div>
-        <div class="export-kv"><span class="export-k">실제 낸 수수료(리베이트 후)</span><span class="export-v">${d2(netFee)} $</span></div>
-        <div class="export-kv"><span class="export-k">1 XP당 실질 비용(수수료만)</span><span class="export-v">${d4(costPerXp)} $/XP</span></div>
-      `;
-
-      $("out").innerHTML="";
-      $("out").appendChild(wrap);
+    if (!src || !src.firstElementChild) {
+      alert('저장할 결과가 없습니다. 먼저 계산하세요.');
+      return;
     }
 
-    $("calc").addEventListener("click", compute);
-    $("reset").addEventListener("click", ()=>{['prevVol','currVol','prevPts','currPts','prevFee','currFee'].forEach(id=>$(id).value=''); $("out").innerHTML='';});
+    // 2) 기존 결과 카드를 그대로 복제
+    const clone = src.cloneNode(true);
 
-    $("copy").addEventListener("click", ()=>{
-      const text=$("out").innerText;
-      navigator.clipboard.writeText(text);
-      alert("결과가 클립보드에 복사되었습니다!");
+    // 3) PNG용 스타일 강제 적용
+    clone.classList.add('png-export');
+
+    // (선택) 카드 배경 컬러가 너무 어두우면 보기 좋게 약간만 밝게:
+    // clone.style.background = '#0f172a';
+
+    // 4) 숨김 루트에 붙여서 캔버스로 캡처
+    const root = document.getElementById('png-export-root');
+    root.innerHTML = '';           // 이전 것 제거
+    root.appendChild(clone);
+
+    // 5) 캡처 (배경/스케일 튜닝)
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#0e0f12',  // PNG 배경
+      scale: 3,                    // 해상도 업샘플링
+      useCORS: true
     });
 
-    $("save").addEventListener("click",
+    // 6) 다운로드
+    const a = document.createElement('a');
+    a.download = 'basedapp_checker_result.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+
+    // 7) 정리
+    root.innerHTML = '';
+  });
+</script>
