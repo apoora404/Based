@@ -47,27 +47,33 @@
       <div class="grid lg:grid-cols-2 gap-x-6 gap-y-4">
         
         <div class="space-y-4">
-          <div class="grid sm:grid-cols-2 gap-3"><label class="block"><span class="block text-xs muted">이전 거래량 (누적, $)</span><input id="prevVol" type="number" step="0.01"></label><label class="block"><span class="block text-xs muted">현재 거래량 (누적, $)</span><input id="currVol" type="number" step="0.01"></label></div>
-          <div class="grid sm:grid-cols-2 gap-3"><label class="block"><span class="block text-xs muted">이전 포인트 (누적)</span><input id="prevPts" type="number" step="0.01"></label><label class="block"><span class="block text-xs muted">현재 포인트 (누적)</span><input id="currPts" type="number" step="0.01"></label></div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="block"><span class="block text-xs muted">이전 거래량 (누적, $)</span><input id="prevVol" type="number" step="0.01"></label>
+            <label class="block"><span class="block text-xs muted">현재 거래량 (누적, $)</span><input id="currVol" type="number" step="0.01"></label>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="block"><span class="block text-xs muted">이전 포인트 (누적)</span><input id="prevPts" type="number" step="0.01"></label>
+            <label class="block"><span class="block text-xs muted">현재 포인트 (누적)</span><input id="currPts" type="number" step="0.01"></label>
+          </div>
+          <details class="rounded-xl bg-[#101216] border border-[#2a2f36] p-3">
+            <summary class="cursor-pointer select-none muted text-sm">▾ 고급 옵션: 총 수수료 직접 입력</summary>
+            <div class="grid sm:grid-cols-2 gap-3 mt-3">
+              <label class="block"><span class="block text-xs muted">이전 총 수수료 (누적, $)</span><input id="prevFeeGross" type="number" step="0.01"></label>
+              <label class="block"><span class="block text-xs muted">현재 총 수수료 (누적, $)</span><input id="currFeeGross" type="number" step="0.01"></label>
+            </div>
+          </details>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <button id="calc" class="btn-accent px-4 py-2 rounded-xl font-semibold">계산 및 저장</button>
+            <button id="reset" class="px-4 py-2 rounded-xl">초기화</button>
+          </div>
         </div>
         
         <div class="space-y-4">
           <label class="block"><span class="block text-xs muted">거래 방식</span><select id="mode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select></label>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="block"><span class="block text-xs muted">시작 자금 ($)</span><input id="startCapital" type="number" step="0.01"></label>
-            <div id="leverageWrapper"><label class="block"><span class="block text-xs muted">레버리지</span><input id="leverage" type="number" value="1" step="1"></label></div>
-          </div>
           <label class="block"><span class="block text-xs muted">XP 부스트</span><select id="boost"><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="60" selected>60%</option></select></label>
           <label class="block"><span class="block text-xs muted">수수료 Tier (참고용)</span><select id="tier"></select></label>
-        </div>
-
-        <div class="lg:col-span-2">
-            <details class="rounded-xl bg-[#101216] border border-[#2a2f36] p-3"><summary class="cursor-pointer select-none muted text-sm">▾ 고급 옵션: 총 수수료 직접 입력</summary><div class="grid sm:grid-cols-2 gap-3 mt-3"><label class="block"><span class="block text-xs muted">이전 총 수수료 (누적, $)</span><input id="prevFeeGross" type="number" step="0.01"></label><label class="block"><span class="block text-xs muted">현재 총 수수료 (누적, $)</span><input id="currFeeGross" type="number" step="0.01"></label></div></details>
-        </div>
-        
-        <div class="lg:col-span-2 flex flex-wrap gap-2 pt-2">
-            <button id="calc" class="btn px-4 py-2 rounded-xl font-semibold bg-[var(--accent)] text-white">계산 및 저장</button>
-            <button id="reset" class="px-4 py-2 rounded-xl">초기화</button>
+          <label class="block"><span class="block text-xs muted">시작 자금 ($)</span><input id="startCapital" type="number" step="0.01"></label>
+          <div id="leverageWrapper"><label class="block"><span class="block text-xs muted">레버리지</span><input id="leverage" type="number" value="1" step="1"></label></div>
         </div>
       </div>
     </section>
