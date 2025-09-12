@@ -62,7 +62,7 @@
   <header class="max-w-5xl mx-auto px-4 py-7">
     <div class="rounded-3xl border border-[var(--accent)]/60 p-3 mx-auto w-fit">
       <div class="rounded-2xl px-5 py-3 bg-[var(--panel)] text-center">
-        <h1 class="text-2xl font-semibold">Basedapp Checker</h1>
+        <h1 class="text-2xl font-semibold">Basedapp Simulator</h1>
       </div>
     </div>
     <p class="mt-3 muted text-sm leading-6">
@@ -348,7 +348,7 @@
       const r=_lastResult;
       const takerLine = (r.takerShareVal==null) ? "— (수수료 입력 필요)" : `${d2(r.takerShareVal*100)} %`;
       const lines=[
-        `=== Basedapp Checker — 결과 요약 ===`, `모드: ${r.mode} · ${r.tier} · Boost ${r.boost}%`, `수수료(M/T): ${(r.makerFee*100).toFixed(3)}% / ${(r.takerFee*100).toFixed(3)}%`, ``,
+        `=== Basedapp Simulator — 결과 요약 ===`, `모드: ${r.mode} · ${r.tier} · Boost ${r.boost}%`, `수수료(M/T): ${(r.makerFee*100).toFixed(3)}% / ${(r.takerFee*100).toFixed(3)}%`, ``,
         `사용 거래량: ${d2(r.usedVol)} $`, `획득 XP: ${d2(r.usedPts)} XP`, `XP 효율: ${d4(r.xpEfficiency)} XP/$`, `1 XP당 거래량: ${d4(r.volPerXp)} $/XP`, ``,
         `총 수수료(리베이트 전): ${d2(r.feeGross)} $`, `평균 수수료율: ${d4(r.avgFeeRate*100)} %`, `추정 Taker 비중: ${takerLine}`,
         `셀프레퍼럴 수익(${Math.round(r.rebateRate*100)}%): ${d2(r.rebateAmt)} $`, `실제 낸 수수료(리베이트 후): ${d2(r.feeNet)} $`,
@@ -387,15 +387,15 @@
       document.body.appendChild(wrap);
       const canvas=await html2canvas(wrap,{ backgroundColor:'#0e0f12', scale:2, useCORS:true });
       const dataURL=canvas.toDataURL('image/png');
-      const a=document.createElement('a'); a.href=dataURL; a.download='basedapp_checker_result.png';
+      const a=document.createElement('a'); a.href=dataURL; a.download='basedapp_Simulator_result.png';
       document.body.appendChild(a); a.click(); document.body.removeChild(a); document.body.removeChild(wrap);
       const b=$("saveImg"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200);
     }
 
     const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross","startCapital"];
-    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_checker_v2",JSON.stringify(obj)); };
+    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_Simulator_v2",JSON.stringify(obj)); };
     function loadInputs(){
-      const raw=localStorage.getItem("basedapp_checker_v2"); if(!raw) return;
+      const raw=localStorage.getItem("basedapp_Simulator_v2"); if(!raw) return;
       try{ const obj=JSON.parse(raw); if(obj.mode) $("mode").value=obj.mode; populateTier();
         KEYS.forEach(k=>{ if(obj[k]!==undefined && k!=="mode") $(k).value=obj[k]; }); updateFeeHint();
       }catch(e){}
@@ -428,4 +428,5 @@
   </script>
 </body>
 </html>
+
 
