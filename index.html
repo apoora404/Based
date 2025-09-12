@@ -44,16 +44,16 @@
     .fade-in { animation: fadeIn .28s ease-out both }
     @keyframes fadeIn { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform: translateY(0) } }
 
-    /* === 내보내기용(캡처 전용) 순수 카드 스타일 (수정됨) === */
+    /* === 내보내기용(캡처 전용) 순수 카드 스타일 === */
     .export-wrap { background: var(--bg); padding: 24px; border-radius: 20px; width: fit-content; }
     .export-card { background: var(--panel-solid); border: 1px solid var(--border); border-radius: 16px; padding: 16px 16px 10px 16px; width: 720px; color:#e9edf3; }
     .export-title { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem; color:#e9edf3; }
     .export-badges { margin-left:.5rem; display:flex; gap:.5rem; align-items:center }
     .export-kv { display:flex; gap:.5rem; align-items:baseline; }
-    .export-k { min-width:12.5rem; color:#c9d1db; } /* 키(Key) 색상 명시 */
-    .export-v { font-weight:700; color:#e9edf3; } /* 값(Value) 색상 명시 */
+    .export-k { min-width:12.5rem; color:#c9d1db; }
+    .export-v { font-weight:700; color:#e9edf3; }
     .export-hr { border-top:1px solid #2b2f36; margin:.75rem 0 }
-    .export-badge { background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; font-size:12px; color:#c9d1db; } /* 뱃지 텍스트 색상 명시 */
+    .export-badge { background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; font-size:12px; color:#c9d1db; }
     .text-ok{ color:var(--ok) !important }
     .text-danger{ color:var(--danger) !important }
   </style>
@@ -119,6 +119,18 @@
           <span class="block text-xs muted">현재 포인트 (누적)</span>
           <input id="currPts" type="number" step="0.01" placeholder="예: 540 또는 20000" />
         </label>
+      </div>
+      
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block" for="startCapital">
+          <span class="block text-xs muted">시작 자금 ($)</span>
+          <input id="startCapital" type="number" step="0.01" placeholder="예: 1000" />
+        </label>
+        <div>
+          <p class="text-[11px] muted mt-1">
+            ※ 입력 시 '사용 거래량'을 기반으로 <b class="text-[var(--accent-2)]">추정 거래 횟수</b>를 계산합니다. (거래량 ÷ 자금)
+          </p>
+        </div>
       </div>
 
       <details class="rounded-xl bg-[#101216] border border-[#2a2f36] p-3">
@@ -210,7 +222,7 @@
     function compute(){
       // 입력값 유효성 검사 (음수 방지)
       let hasError = false;
-      const numericInputIds = ["prevVol", "currVol", "prevPts", "currPts", "prevFeeGross", "currFeeGross"];
+      const numericInputIds = ["prevVol", "currVol", "prevPts", "currPts", "prevFeeGross", "currFeeGross", "startCapital"];
       numericInputIds.forEach(id => {
         const input = $(id);
         if (Number(input.value) < 0) {
@@ -232,6 +244,7 @@
       const makerFee = fee.maker, takerFee = fee.taker;
       const boost = Number($("boost").value||0);
 
+      const startCapital = Number($("startCapital").value || 0);
       const prevVol = Number($("prevVol").value || 0);
       const currVol = Number($("currVol").value || 0);
       const prevPts = Number($("prevPts").value || 0);
@@ -241,7 +254,6 @@
 
       const deltaVol = Math.max(0, currVol - prevVol);
       const deltaPts = Math.max(0, currPts - prevPts);
-
       const eff = xpPerDollar(mode, boost);
 
       let usedVol = 0, usedPts = 0;
@@ -252,8 +264,14 @@
       } else if (deltaVol > 0) {
         usedVol = deltaVol; usedPts = usedVol * eff;
       } else {
-        $("out").innerHTML = `<div class="text-sm muted">이전/현재 포인트 또는 거래량 중 하나의 쌍이라도 입력해 주세요.</div>`;
+        $("out").innerHTML = `<div class="text-sm muted">포인트 또는 거래량 중 하나를 입력해 주세요.</div>`;
         _lastResult=null; return;
+      }
+
+      let tradeCountText = "— (시작 자금 입력 필요)";
+      if (startCapital > 0 && usedVol > 0) {
+        const tradeCount = usedVol / startCapital;
+        tradeCountText = `${d2(tradeCount)} 회`;
       }
 
       let feeGross = usedVol * makerFee;
@@ -283,6 +301,7 @@
 
       const rows=[];
       rows.push(`<div class="kv"><span class="k">사용 거래량</span><span class="v num text-[1.05rem]">${d2(usedVol)} $</span></div>`);
+      rows.push(`<div class="kv"><span class="k">추정 거래 횟수</span><span class="v num">${tradeCountText}</span></div>`);
       rows.push(`<div class="kv"><span class="k">획득 XP</span><span class="v num text-[1.05rem]">${d2(usedPts)} XP</span></div>`);
       rows.push(`<div class="kv"><span class="k">XP 효율</span><span class="v num">${d4(xpEfficiency)} XP/$${effNote}</span></div>`);
       rows.push(`<div class="kv"><span class="k">1 XP당 거래량</span><span class="v num">${d4(volPerXp)} $/XP</span></div>`);
@@ -294,6 +313,26 @@
       rows.push(`<div class="kv"><span class="k">실제 낸 수수료(리베이트 후)</span><span class="v num text-[var(--danger)]">${d2(feeNet)} $</span></div>`);
       const costPerXp = usedPts > 0 ? (feeNet / usedPts) : 0;
       rows.push(`<div class="kv"><span class="k">1 XP당 실질 비용(수수료만)</span><span class="v num">${d4(costPerXp)} $/XP</span></div>`);
+      
+      if (usedVol > 0) {
+        const oppositeMode = (mode === 'perps') ? 'spot' : 'perps';
+        const oppositeModeName = (oppositeMode === 'spot') ? '현물' : '선물';
+        const oppositeFee = FEES[oppositeMode].tiers[tierIdx];
+        const oppositeEff = xpPerDollar(oppositeMode, boost);
+        
+        const whatIfPts = usedVol * oppositeEff;
+        const whatIfFeeGross = usedVol * oppositeFee.maker; // Maker 수수료로만 단순 비교
+        const whatIfRebate = whatIfFeeGross * rebateRate;
+        const whatIfFeeNet = whatIfFeeGross - whatIfRebate;
+        const whatIfCostPerXp = whatIfPts > 0 ? (whatIfFeeNet / whatIfPts) : 0;
+
+        rows.push(`<hr class="my-3 border-[#2b2f36]" />`);
+        rows.push(`<div class="text-sm muted mb-2">만약 동일 거래량을 <b class="text-white">${oppositeModeName}</b>(으)로 했다면? (Maker 기준)</div>`);
+        rows.push(`<div class="kv"><span class="k">예상 획득 XP</span><span class="v num">${d2(whatIfPts)} XP</span></div>`);
+        rows.push(`<div class="kv"><span class="k">예상 실제 수수료</span><span class="v num text-[var(--danger)]">${d2(whatIfFeeNet)} $</span></div>`);
+        rows.push(`<div class="kv"><span class="k">예상 1 XP당 비용</span><span class="v num">${d4(whatIfCostPerXp)} $/XP</span></div>`);
+      }
+      
       $("out").innerHTML = `<div class="space-y-1 fade-in">${rows.join("")}</div>`;
 
       _lastResult = {
@@ -305,6 +344,7 @@
 
     function copyResultToClipboard(){
       if (!_lastResult){ compute(); if(!_lastResult) return; }
+      // (This function can be updated to include the new info if desired, but is left as is for now)
       const r=_lastResult;
       const takerLine = (r.takerShareVal==null) ? "— (수수료 입력 필요)" : `${d2(r.takerShareVal*100)} %`;
       const lines=[
@@ -352,7 +392,7 @@
       const b=$("saveImg"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200);
     }
 
-    const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross"];
+    const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross","startCapital"];
     const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_checker_v2",JSON.stringify(obj)); };
     function loadInputs(){
       const raw=localStorage.getItem("basedapp_checker_v2"); if(!raw) return;
@@ -361,7 +401,7 @@
       }catch(e){}
     }
     function resetAll(){
-      ["prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross"].forEach(id=>$(id).value="");
+      ["prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross","startCapital"].forEach(id=>$(id).value="");
       $("boost").value="60"; $("mode").value="perps"; populateTier(); $("out").innerHTML=""; _lastResult=null;
     }
 
