@@ -36,37 +36,18 @@
     .kv{ display:flex; gap:.5rem; align-items:baseline }
     .kv .k{ min-width:12.5rem; color:#aab2bd }
     .kv .v{ font-weight:700 }
-    /* 결과 카드 강조 프레임 */
     .frame {
       position: relative; border-radius:18px; padding:4px;
       background: linear-gradient(135deg, rgba(255,106,61,.7), rgba(255,130,92,.25));
     }
-    .frame > .inner {
-      background:var(--panel); border-radius:16px; border:1px solid var(--border);
-    }
+    .frame > .inner { background:var(--panel); border-radius:16px; border:1px solid var(--border); }
     .fade-in { animation: fadeIn .28s ease-out both }
-    @keyframes fadeIn {
-      from { opacity:0; transform: translateY(6px) }
-      to   { opacity:1; transform: translateY(0) }
-    }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform: translateY(0) } }
 
     /* === 내보내기용(캡처 전용) 순수 카드 스타일 === */
-    .export-wrap {
-      background: var(--bg);
-      padding: 24px;
-      border-radius: 20px;
-      width: fit-content;
-      color:#e9edf3;
-    }
-    .export-card {
-      background: var(--panel-solid);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px 16px 10px 16px;
-      width: 720px; /* 결과 이미지 가독성 좋은 고정 폭 */
-      color:#e9edf3;
-    }
-    .export-card *{ color:#e9edf3 !important } /* 캡처 시 흐릿 방지 (텍스트 색 강제) */
+    .export-wrap { background: var(--bg); padding: 24px; border-radius: 20px; width: fit-content; color:#e9edf3; }
+    .export-card { background: var(--panel-solid); border: 1px solid var(--border); border-radius: 16px; padding: 16px 16px 10px 16px; width: 720px; color:#e9edf3; }
+    .export-card *{ color:#e9edf3 !important }
     .export-title { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem }
     .export-badges { margin-left:.5rem; display:flex; gap:.5rem; align-items:center }
     .export-kv { display:flex; gap:.5rem; align-items:baseline; }
@@ -80,7 +61,6 @@
 </head>
 <body>
   <header class="max-w-5xl mx-auto px-4 py-7">
-    <!-- 제목 가운데 정렬 -->
     <div class="rounded-3xl border border-[var(--accent)]/60 p-3 mx-auto w-fit">
       <div class="rounded-2xl px-5 py-3 bg-[var(--panel)] text-center">
         <h1 class="text-2xl font-semibold">Basedapp Checker</h1>
@@ -192,6 +172,13 @@
     </section>
   </main>
 
+  <!-- 푸터: 트위터 핸들 -->
+  <footer class="mt-6 py-4 border-t border-[var(--border)] text-center text-sm text-[var(--muted)]">
+    2025 Brought to you by
+    <a href="https://twitter.com/no_gongju" target="_blank" rel="noopener"
+       class="ml-1 text-[var(--accent)] hover:underline">@no_gongju</a>
+  </footer>
+
   <script>
     // 수수료표 (소수)
     const FEES = {
@@ -254,7 +241,6 @@
       const prevFeeGross = Number($("prevFeeGross").value || 0);
       const currFeeGross = Number($("currFeeGross").value || 0);
 
-      // 0도 유효값: 둘 다 >=0이면 차이 계산
       const deltaVol = (currVol >= 0 && prevVol >= 0) ? Math.max(0, currVol - prevVol) : 0;
       const deltaPts = (currPts >= 0 && prevPts >= 0) ? Math.max(0, currPts - prevPts) : 0;
 
@@ -362,18 +348,15 @@
       }
     }
 
-    // 내보내기: 그라디언트/투명 제거 + 밝은 텍스트 강제
     async function saveResultAsPng(){
       if(!_lastResult){ compute(); if(!_lastResult) return; }
 
-      // 1) 내보내기용 DOM 구성
       const wrap = document.createElement('div');
       wrap.className = 'export-wrap';
       const card = document.createElement('div');
       card.className = 'export-card';
       wrap.appendChild(card);
 
-      // 헤더
       const head = document.createElement('div');
       head.className = 'export-title';
       const h = document.createElement('div');
@@ -390,26 +373,21 @@
       head.appendChild(badges);
       card.appendChild(head);
 
-      // 본문
       const out = document.getElementById('out');
       if(!out || !out.firstChild){ compute(); }
       const tmp = document.createElement('div'); tmp.innerHTML = out.innerHTML;
 
-      // 클래스 치환 + 색상 고정
       tmp.querySelectorAll('.kv').forEach(el=>{
         el.className = 'export-kv';
         const k = el.querySelector('.k'); if(k){ k.className='export-k'; }
         const v = el.querySelector('.v'); if(v){ v.className='export-v num'; }
       });
-      // 색 강조 다시 적용
       tmp.querySelectorAll('[style*="var(--ok)"]').forEach(el=>{ el.classList.add('text-ok'); el.removeAttribute('style'); });
       tmp.querySelectorAll('[style*="var(--danger)"]').forEach(el=>{ el.classList.add('text-danger'); el.removeAttribute('style'); });
-      // 구분선
       tmp.querySelectorAll('hr').forEach(hr=>{ const d=document.createElement('div'); d.className='export-hr'; hr.replaceWith(d); });
 
       card.appendChild(tmp);
 
-      // 푸터 문구
       const foot = document.createElement('div');
       foot.style.color='#c9d1db';
       foot.style.fontSize='11px';
@@ -417,26 +395,17 @@
       foot.textContent = '평균 수수료율은 기본적으로 Maker만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과 추정 Taker 비중을 역산해 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.';
       card.appendChild(foot);
 
-      // 2) 문서에 붙여서 캔버스 생성 (불투명 배경을 명시)
       document.body.appendChild(wrap);
-      const canvas=await html2canvas(wrap,{
-        backgroundColor: '#0e0f12',
-        scale: 2,
-        useCORS: true
-      });
+      const canvas=await html2canvas(wrap,{ backgroundColor:'#0e0f12', scale:2, useCORS:true });
       const dataURL=canvas.toDataURL('image/png');
 
-      // 3) 다운로드
       const a=document.createElement('a'); a.href=dataURL; a.download='basedapp_checker_result.png';
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-
-      // 4) 정리
       document.body.removeChild(wrap);
 
       const b=$("saveImg"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200);
     }
 
-    // 저장/복원
     const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross"];
     const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_checker_v2",JSON.stringify(obj)); };
     function loadInputs(){
@@ -456,7 +425,6 @@
     $("copy").addEventListener("click", copyResultToClipboard);
     $("saveImg").addEventListener("click", saveResultAsPng);
 
-    // 초기화
     populateTier(); loadInputs(); updateFeeHint();
   </script>
 </body>
