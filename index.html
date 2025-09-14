@@ -1,431 +1,265 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Basedapp Simulator</title>
+  <title>Basedapp Simulator & Analyzer</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
-    :root{
-      color-scheme: dark light;
-      --bg:#0e0f12;              /* 배경 */
-      --panel:#16181d;            /* 카드 배경 */
-      --panel-solid:#121419;    /* 내보내기용 더 진한 불투명 */
-      --border:#242833;
-      --muted:#98a2af;
-      --accent:#ff6a3d;          /* 주황 (포커스/메인 버튼) */
-      --accent-2:#ff825c;        /* 주황 라이트 */
-      --ok:#2ad7a3;              /* 초록(리베이트/양수) */
-      --danger:#ff6b6b;          /* 빨강(지출/오류) */
+    /* 다크 모드 (기본) */
+    :root {
+      color-scheme: dark;
+      --bg: #0e0f12; --panel: #16181d; --border: #242833;
+      --text-main: #e8eaee; --text-muted: #98a2af;
+      --accent: #ff6a3d; --ok: #2ad7a3; --danger: #ff6b6b;
       --ring: 0 0 0 3px rgba(255,106,61,.35);
+      --input-bg: #101217;
     }
-    body{ background:var(--bg); color:#e8eaee }
-    .card{ background:var(--panel); border:1px solid var(--border) }
-    .muted{ color:var(--muted) }
-    .btn{ background:var(--accent); color:white }
-    .btn:hover{ filter:brightness(1.05) }
-    .btn-ghost{ background:#1b1f26; border:1px solid var(--border); color:#e8eaee }
+    /* 라이트 모드 */
+    [data-theme='light'] {
+      color-scheme: light;
+      --bg: #f0f2f5; --panel: #ffffff; --border: #dcdfe3;
+      --text-main: #1f2328; --text-muted: #656d76;
+      --accent: #f56565; --ok: #38a169; --danger: #e53e3e;
+      --ring: 0 0 0 3px rgba(245,101,101,.35);
+      --input-bg: #f0f2f5;
+    }
+    body{ background: var(--bg); color: var(--text-main); transition: background .2s, color .2s; }
+    .card{ background: var(--panel); border: 1px solid var(--border); }
+    .muted{ color: var(--text-muted); }
+    .btn-accent{ background: var(--accent); color: white; }
+    .btn-accent:hover{ filter: brightness(1.05); }
     input,select{
-      background:#101217; border:1px solid var(--border); color:#e8eaee;
-      border-radius:12px; padding:.65rem .8rem; width:100%;
+      background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main);
+      border-radius: 12px; padding: .65rem .8rem; width: 100%;
     }
-    input:focus,select:focus{ outline:none; box-shadow:var(--ring); border-color:#3a414b }
-    .num{ font-variant-numeric:tabular-nums }
-    .badge{ background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; }
-    .kv{ display:flex; gap:.5rem; align-items:baseline }
-    .kv .k{ min-width:12.5rem; color:#aab2bd }
-    .kv .v{ font-weight:700 }
-    .frame {
-      position: relative; border-radius:18px; padding:4px;
-      background: linear-gradient(135deg, rgba(255,106,61,.7), rgba(255,130,92,.25));
-    }
-    .frame > .inner { background:var(--panel); border-radius:16px; border:1px solid var(--border); }
-    .fade-in { animation: fadeIn .28s ease-out both }
-    @keyframes fadeIn { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform: translateY(0) } }
-
-    /* === 내보내기용(캡처 전용) 순수 카드 스타일 === */
-    .export-wrap { background: var(--bg); padding: 24px; border-radius: 20px; width: fit-content; }
-    .export-card { background: var(--panel-solid); border: 1px solid var(--border); border-radius: 16px; padding: 16px 16px 10px 16px; width: 720px; color:#e9edf3; }
-    .export-title { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem; color:#e9edf3; }
-    .export-badges { margin-left:.5rem; display:flex; gap:.5rem; align-items:center }
-    .export-kv { display:flex; gap:.5rem; align-items:baseline; }
-    .export-k { min-width:12.5rem; color:#c9d1db; }
-    .export-v { font-weight:700; color:#e9edf3; }
-    .export-hr { border-top:1px solid #2b2f36; margin:.75rem 0 }
-    .export-badge { background:#11141a; border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; font-size:12px; color:#c9d1db; }
-    .text-ok{ color:var(--ok) !important }
-    .text-danger{ color:var(--danger) !important }
+    input:focus,select:focus{ outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+    .num{ font-variant-numeric: tabular-nums; }
+    .kv{ display: flex; gap: .5rem; align-items: baseline; }
+    .kv .k{ min-width: 10.5rem; color: var(--text-muted); }
+    .kv .v{ font-weight: 700; }
+    .text-ok{ color: var(--ok); }
+    .text-danger{ color: var(--danger); }
+    .tab{ padding: .5rem 1rem; border-bottom: 2px solid transparent; color: var(--text-muted); cursor: pointer; transition: color .2s, border-color .2s; }
+    .tab.active{ color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
   </style>
 </head>
-<body>
-  <header class="max-w-5xl mx-auto px-4 py-7">
+<body class="pb-28">
+  <header class="max-w-5xl mx-auto px-4 py-7 relative">
     <div class="rounded-3xl border border-[var(--accent)]/60 p-3 mx-auto w-fit">
       <div class="rounded-2xl px-5 py-3 bg-[var(--panel)] text-center">
-        <h1 class="text-2xl font-semibold">Basedapp Simulator</h1>
+        <h1 class="text-2xl font-semibold">Basedapp Simulator & Analyzer</h1>
       </div>
     </div>
-    <p class="mt-3 muted text-sm leading-6">
-      • <b>이전/현재 포인트만</b> 입력 시 → 포인트 차이로 <b>필요 거래량</b> 역산<br/>
-      • <b>이전/현재 거래량만</b> 입력 시 → 거래량 차이로 <b>획득 XP</b> 계산<br/>
-      • <b>총 수수료(누적)</b> 이전/현재를 넣으면 차이로 이번 구간 <b>총 수수료(리베이트 전)</b> 사용<br/>
-      • 리베이트(60%)는 결과에서만 적용. <b>수수료 미입력 시 Taker 비중은 ‘—’</b>로 표시
-    </p>
+    <button id="theme-toggle" class="absolute top-8 right-8 p-2 rounded-full bg-[var(--panel)] border border-[var(--border)]">
+      <svg id="theme-icon-light" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.706-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 7.072l.707-.707a1 1 0 10-1.414-1.414l-.707.707a1 1 0 101.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+      <svg id="theme-icon-dark" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+    </button>
   </header>
 
-  <main class="max-w-5xl mx-auto px-4 pb-28 space-y-6">
+  <main class="max-w-5xl mx-auto px-4 space-y-6">
     <section class="card rounded-2xl p-4 space-y-4">
-      <div class="grid sm:grid-cols-3 gap-3 items-end">
-        <label class="block" for="mode">
-          <span class="block text-xs muted">거래 방식</span>
-          <select id="mode">
-            <option value="perps">선물 (Perps)</option>
-            <option value="spot">현물 (Spot)</option>
-          </select>
-        </label>
-        <label class="block" for="boost">
-          <span class="block text-xs muted">XP 부스트</span>
-          <select id="boost">
-            <option value="0">0%</option>
-            <option value="25">25%</option>
-            <option value="50">50%</option>
-            <option value="60" selected>60%</option>
-          </select>
-        </label>
-        <label class="block" for="tier">
-          <span class="block text-xs muted">14일 가중 거래량 Tier</span>
-          <select id="tier"></select>
-          <p class="text-[11px] muted mt-1" id="feeHint"></p>
-        </label>
-      </div>
-
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block" for="prevVol">
-          <span class="block text-xs muted">이전 거래량 (누적, $)</span>
-          <input id="prevVol" type="number" step="0.01" placeholder="예: 0 또는 200000" />
-        </label>
-        <label class="block" for="currVol">
-          <span class="block text-xs muted">현재 거래량 (누적, $)</span>
-          <input id="currVol" type="number" step="0.01" placeholder="예: 10000 또는 290000" />
-        </label>
-      </div>
-
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block" for="prevPts">
-          <span class="block text-xs muted">이전 포인트 (누적)</span>
-          <input id="prevPts" type="number" step="0.01" placeholder="예: 0 또는 12000" />
-        </label>
-        <label class="block" for="currPts">
-          <span class="block text-xs muted">현재 포인트 (누적)</span>
-          <input id="currPts" type="number" step="0.01" placeholder="예: 540 또는 20000" />
-        </label>
+      <div class="flex border-b border-[var(--border)]">
+        <button id="tabSimulator" class="tab active">목표 시뮬레이터</button>
+        <button id="tabAnalyzer" class="tab">거래 분석</button>
       </div>
       
-      <div class="grid sm:grid-cols-2 gap-3">
-        <label class="block" for="startCapital">
-          <span class="block text-xs muted">시작 자금 ($)</span>
-          <input id="startCapital" type="number" step="0.01" placeholder="예: 1000" />
-        </label>
-        <div>
-          <p class="text-[11px] muted mt-1">
-            ※ 입력 시 '사용 거래량'을 기반으로 <b class="text-[var(--accent-2)]">추정 거래 횟수</b>를 계산합니다. (거래량 ÷ 자금)
-          </p>
+      <div id="simulatorInputs" class="space-y-4 pt-4">
+        <p class="text-sm muted">목표 XP를 달성하기 위한 거래량과 횟수를 계산합니다.</p>
+        <div class="grid lg:grid-cols-2 gap-x-6 gap-y-4">
+            <div class="space-y-4">
+                <label class="block"><span class="block text-xs muted">목표 XP</span><input id="targetXp" type="number" step="100" placeholder="50000"></label>
+            </div>
+            <div class="space-y-4">
+                <label class="block"><span class="block text-xs muted">거래 방식</span><select id="simMode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select></label>
+                <label class="block"><span class="block text-xs muted">XP 부스트</span><select id="simBoost"><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="60" selected>60%</option></select></label>
+            </div>
         </div>
+        <div class="grid lg:grid-cols-2 gap-x-6 gap-y-4 pt-4 border-t border-[var(--border)]">
+            <label class="block"><span class="block text-xs muted">시작 자금 ($)</span><input id="simStartCapital" type="number" step="0.01" placeholder="1000"></label>
+            <div id="simLeverageWrapper"><label class="block"><span class="block text-xs muted">레버리지</span><input id="simLeverage" type="number" value="10" step="1"></label></div>
+        </div>
+        <button id="simulateBtn" class="w-full btn-accent p-2 rounded-xl font-semibold mt-2">시뮬레이션 실행</button>
       </div>
 
-      <details class="rounded-xl bg-[#101216] border border-[#2a2f36] p-3">
-        <summary class="cursor-pointer select-none muted text-sm">
-          ▾ 고급 옵션(선택): 이전/현재 <b>총 수수료(누적)</b> 입력 → 사용 구간 총 수수료 자동 계산
-        </summary>
-        <div class="grid sm:grid-cols-2 gap-3 mt-3">
-          <label class="block" for="prevFeeGross">
-            <span class="block text-xs muted">이전 총 수수료 (누적, $)</span>
-            <input id="prevFeeGross" type="number" step="0.01" placeholder="예: 0 또는 25.3" />
-          </label>
-          <label class="block" for="currFeeGross">
-            <span class="block text-xs muted">현재 총 수수료 (누적, $)</span>
-            <input id="currFeeGross" type="number" step="0.01" placeholder="예: 4.0 또는 409.1" />
-          </label>
+      <div id="analyzerInputs" class="hidden space-y-4 pt-4">
+        <p class="text-sm muted">실제 거래 후 누적된 거래량을 입력하여 효율을 분석합니다.</p>
+        <div class="grid lg:grid-cols-2 gap-x-6 gap-y-4">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="block"><span class="block text-xs muted">이전 거래량 (누적, $)</span><input id="prevVol" type="number" step="0.01"></label>
+                    <label class="block"><span class="block text-xs muted">현재 거래량 (누적, $)</span><input id="currVol" type="number" step="0.01"></label>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <label class="block"><span class="block text-xs muted">거래 방식</span><select id="checkMode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select></label>
+                <label class="block"><span class="block text-xs muted">XP 부스트</span><select id="checkBoost"><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="60" selected>60%</option></select></label>
+            </div>
         </div>
-        <p class="text-[11px] muted mt-2">
-          ※ 입력 시 두 값의 차이로 이번 구간 <b>총 수수료(리베이트 전)</b>이 자동 계산됩니다.
-          리베이트(60%)는 결과에서만 반영합니다.
-        </p>
-      </details>
-
-      <div class="flex flex-wrap gap-2">
-        <button id="calc" class="btn px-4 py-2 rounded-xl font-semibold">계산하기</button>
-        <button id="save" class="btn-ghost px-4 py-2 rounded-xl">입력값 저장</button>
-        <button id="reset" class="btn-ghost px-4 py-2 rounded-xl">초기화</button>
+        <button id="analyzeBtn" class="w-full btn-accent p-2 rounded-xl font-semibold mt-2">분석하기</button>
       </div>
     </section>
 
-    <section id="resultCard" class="frame fade-in">
-      <div class="inner rounded-2xl p-4 space-y-3 relative">
-        <div class="flex items-center gap-2 pr-32">
-          <h3 class="font-semibold text-lg">결과</h3>
-          <span class="badge text-xs" id="modeBadge">Perps · Tier 0</span>
-          <span class="badge text-xs" id="feeBadge">Maker/Taker: -</span>
-        </div>
-        <div class="absolute right-3 top-3 flex gap-2">
-          <button id="copy" class="btn-ghost px-3 py-1.5 rounded-lg text-sm">복사</button>
-          <button id="saveImg" class="btn-ghost px-3 py-1.5 rounded-lg text-sm">PNG 저장</button>
-        </div>
-        <div id="out" class="space-y-2"></div>
-        <p class="text-[11px] muted">
-          평균 수수료율은 기본적으로 <b>Maker</b>만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과
-          <b>추정 Taker 비중</b>을 역산하여 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.
-        </p>
-      </div>
+    <section id="resultCard" class="card rounded-2xl p-4">
+        <h3 class="font-semibold text-lg">결과</h3>
+        <div id="out" class="space-y-2 mt-3"></div>
     </section>
   </main>
-
-  <footer class="mt-6 py-4 border-t border-[var(--border)] text-center text-sm text-[var(--muted)]">
-    2025 Brought to you by
-    <a href="https://twitter.com/no_gongju" target="_blank" rel="noopener"
-       class="ml-1 text-[var(--accent)] hover:underline">@no_gongju</a>
-  </footer>
-
+  
   <script>
-    // 수수료표 (소수)
-    const FEES = {
-      perps: { tiers: [
-        { name: "Tier 0 (기본)", taker: 0.00045, maker: 0.00015 }, { name: "Tier 1 (>5M)", taker: 0.00040, maker: 0.00012 }, { name: "Tier 2 (>25M)", taker: 0.00035, maker: 0.00008 }, { name: "Tier 3 (>100M)", taker: 0.00030, maker: 0.00004 }, { name: "Tier 4 (>500M)", taker: 0.00028, maker: 0.00000 }, { name: "Tier 5 (>2B)", taker: 0.00026, maker: 0.00000 }, { name: "Tier 6 (>7B)", taker: 0.00024, maker: 0.00000 },
-      ]},
-      spot: { tiers: [
-        { name: "Tier 0 (기본)", taker: 0.00070, maker: 0.00040 }, { name: "Tier 1 (>5M)", taker: 0.00060, maker: 0.00030 }, { name: "Tier 2 (>25M)", taker: 0.00050, maker: 0.00020 }, { name: "Tier 3 (>100M)", taker: 0.00040, maker: 0.00010 }, { name: "Tier 4 (>500M)", taker: 0.00035, maker: 0.00000 }, { name: "Tier 5 (>2B)", taker: 0.00030, maker: 0.00000 }, { name: "Tier 6 (>7B)", taker: 0.00025, maker: 0.00000 },
-      ]},
+    const FEES = { 
+        perps: { total_maker: 0.0004 },
+        spot:  { total_maker_avg: 0.0009 }
     };
-    const XP_PER_DOLLAR_BASE = { perps: 0.03375, spot: 0.1266 };
-    const xpPerDollar = (mode, boostPct)=> (XP_PER_DOLLAR_BASE[mode]||0) * (1 + (boostPct||0)/100);
+    const BUILDER_FEE_RATES = {
+        perps: 0.00025,
+        spot: 0.0005 
+    };
+    const XP_PER_DOLLAR_BASE = {
+        perps: 0.03375,
+        spot: 0.3038 
+    };
 
-    const $ = (id)=>document.getElementById(id);
-    const d2 = (n)=> Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-    const d4 = (n)=> Number(n||0).toLocaleString(undefined,{minimumFractionDigits:4,maximumFractionDigits:4});
-
-    function populateTier(){
-      const mode = $("mode").value, sel = $("tier"); sel.innerHTML = "";
-      FEES[mode].tiers.forEach((t,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=t.name; sel.appendChild(o); });
-      sel.value = 0; updateFeeHint();
-    }
-    function updateFeeHint(){
-      const mode = $("mode").value, t=FEES[mode].tiers[Number($("tier").value)];
-      $("feeHint").textContent = `Taker ${ (t.taker*100).toFixed(3) }% · Maker ${ (t.maker*100).toFixed(3) }%`;
-      $("feeBadge").textContent = `Maker/Taker: ${(t.maker*100).toFixed(3)}% / ${(t.taker*100).toFixed(3)}%`;
-      $("modeBadge").textContent = `${mode==='perps'?'Perps':'Spot'} · ${t.name}`;
-    }
-    $("mode").addEventListener("change", populateTier);
-    $("tier").addEventListener("change", updateFeeHint);
-
-    let _lastResult=null;
-
-    function compute(){
-      // 입력값 유효성 검사 (음수 방지)
-      let hasError = false;
-      const numericInputIds = ["prevVol", "currVol", "prevPts", "currPts", "prevFeeGross", "currFeeGross", "startCapital"];
-      numericInputIds.forEach(id => {
-        const input = $(id);
-        if (Number(input.value) < 0) {
-          input.style.borderColor = 'var(--danger)';
-          hasError = true;
-        } else {
-          input.style.borderColor = 'var(--border)';
-        }
-      });
-      if (hasError) {
-        $("out").innerHTML = `<div class="text-sm text-[var(--danger)]">입력값에 음수가 포함될 수 없습니다.</div>`;
-        _lastResult = null;
-        return;
-      }
-      
-      const mode = $("mode").value;
-      const tierIdx = Number($("tier").value);
-      const fee = FEES[mode].tiers[tierIdx];
-      const makerFee = fee.maker, takerFee = fee.taker;
-      const boost = Number($("boost").value||0);
-
-      const startCapital = Number($("startCapital").value || 0);
-      const prevVol = Number($("prevVol").value || 0);
-      const currVol = Number($("currVol").value || 0);
-      const prevPts = Number($("prevPts").value || 0);
-      const currPts = Number($("currPts").value || 0);
-      const prevFeeGross = Number($("prevFeeGross").value || 0);
-      const currFeeGross = Number($("currFeeGross").value || 0);
-
-      const deltaVol = Math.max(0, currVol - prevVol);
-      const deltaPts = Math.max(0, currPts - prevPts);
-      const eff = xpPerDollar(mode, boost);
-
-      let usedVol = 0, usedPts = 0;
-      if (deltaVol > 0 && deltaPts > 0) {
-        usedVol = deltaVol; usedPts = deltaPts;
-      } else if (deltaPts > 0) {
-        usedPts = deltaPts; usedVol = eff > 0 ? usedPts / eff : 0;
-      } else if (deltaVol > 0) {
-        usedVol = deltaVol; usedPts = usedVol * eff;
-      } else {
-        $("out").innerHTML = `<div class="text-sm muted">포인트 또는 거래량 중 하나를 입력해 주세요.</div>`;
-        _lastResult=null; return;
-      }
-
-      let tradeCountText = "— (시작 자금 입력 필요)";
-      if (startCapital > 0 && usedVol > 0) {
-        const tradeCount = usedVol / startCapital;
-        tradeCountText = `${d2(tradeCount)} 회`;
-      }
-
-      let feeGross = usedVol * makerFee;
-      const feeGrossInput = Math.max(0, currFeeGross - prevFeeGross);
-      const feeByUser = feeGrossInput > 0 || (currFeeGross > 0 || prevFeeGross > 0);
-      if (feeByUser) feeGross = feeGrossInput;
-
-      const avgFeeRate = usedVol > 0 ? (feeGross / usedVol) : 0;
-
-      let takerShareText = "— (수수료 입력 필요)";
-      let takerShareVal = null;
-      if (feeByUser && usedVol > 0 && takerFee !== makerFee) {
-        const share = Math.min(1, Math.max(0, (avgFeeRate - makerFee) / (takerFee - makerFee)));
-        takerShareVal = share; takerShareText = `${d2(share*100)} %`;
-      }
-
-      const rebateRate = 0.60, rebateAmt = feeGross * rebateRate, feeNet = feeGross - rebateAmt;
-      const xpEfficiency = usedVol > 0 ? usedPts / usedVol : 0;
-      const volPerXp = usedPts > 0 ? usedVol / usedPts : 0;
-
-      let effNote="";
-      if (deltaVol > 0 && deltaPts > 0) {
-        const expectedEff = eff;
-        const diffPct = expectedEff > 0 ? ((xpEfficiency - expectedEff) / expectedEff * 100) : 0;
-        effNote = ` (기대 ${d4(expectedEff)} 대비 ${diffPct>=0?"+":""}${d2(diffPct)}%)`;
-      }
-
-      const rows=[];
-      rows.push(`<div class="kv"><span class="k">사용 거래량</span><span class="v num text-[1.05rem]">${d2(usedVol)} $</span></div>`);
-      rows.push(`<div class="kv"><span class="k">추정 거래 횟수</span><span class="v num">${tradeCountText}</span></div>`);
-      rows.push(`<div class="kv"><span class="k">획득 XP</span><span class="v num text-[1.05rem]">${d2(usedPts)} XP</span></div>`);
-      rows.push(`<div class="kv"><span class="k">XP 효율</span><span class="v num">${d4(xpEfficiency)} XP/$${effNote}</span></div>`);
-      rows.push(`<div class="kv"><span class="k">1 XP당 거래량</span><span class="v num">${d4(volPerXp)} $/XP</span></div>`);
-      rows.push(`<hr class="my-3 border-[#2b2f36]" />`);
-      rows.push(`<div class="kv"><span class="k">총 수수료(리베이트 전)</span><span class="v num">${d2(feeGross)} $</span></div>`);
-      rows.push(`<div class="kv"><span class="k">평균 수수료율</span><span class="v num">${d4(avgFeeRate*100)} %</span></div>`);
-      rows.push(`<div class="kv"><span class="k">추정 Taker 비중</span><span class="v num">${takerShareText}</span></div>`);
-      rows.push(`<div class="kv"><span class="k">셀프레퍼럴 수익(60%)</span><span class="v num text-[var(--ok)]">${d2(rebateAmt)} $</span></div>`);
-      rows.push(`<div class="kv"><span class="k">실제 낸 수수료(리베이트 후)</span><span class="v num text-[var(--danger)]">${d2(feeNet)} $</span></div>`);
-      const costPerXp = usedPts > 0 ? (feeNet / usedPts) : 0;
-      rows.push(`<div class="kv"><span class="k">1 XP당 실질 비용(수수료만)</span><span class="v num">${d4(costPerXp)} $/XP</span></div>`);
-      
-      if (usedVol > 0) {
-        const oppositeMode = (mode === 'perps') ? 'spot' : 'perps';
-        const oppositeModeName = (oppositeMode === 'spot') ? '현물' : '선물';
-        const oppositeFee = FEES[oppositeMode].tiers[tierIdx];
-        const oppositeEff = xpPerDollar(oppositeMode, boost);
+    const $ = (id) => document.getElementById(id);
+    const d2 = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const d_auto = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 4 });
+    
+    function runSimulation() {
+        const targetXp = Number($('targetXp').value || 0);
+        const mode = $('simMode').value;
+        const boost = Number($('simBoost').value || 0);
+        const startCapital = Number($('simStartCapital').value || 0);
+        const leverage = mode === 'perps' ? Number($('simLeverage').value || 1) : 1;
         
-        const whatIfPts = usedVol * oppositeEff;
-        const whatIfFeeGross = usedVol * oppositeFee.maker; // Maker 수수료로만 단순 비교
-        const whatIfRebate = whatIfFeeGross * rebateRate;
-        const whatIfFeeNet = whatIfFeeGross - whatIfRebate;
-        const whatIfCostPerXp = whatIfPts > 0 ? (whatIfFeeNet / whatIfPts) : 0;
+        if (targetXp <= 0) { $('out').innerHTML = `<div class="text-sm muted">목표 XP를 입력해주세요.</div>`; return; }
 
-        rows.push(`<hr class="my-3 border-[#2b2f36]" />`);
-        rows.push(`<div class="text-sm muted mb-2">만약 동일 거래량을 <b class="text-white">${oppositeModeName}</b>(으)로 했다면? (Maker 기준)</div>`);
-        rows.push(`<div class="kv"><span class="k">예상 획득 XP</span><span class="v num">${d2(whatIfPts)} XP</span></div>`);
-        rows.push(`<div class="kv"><span class="k">예상 실제 수수료</span><span class="v num text-[var(--danger)]">${d2(whatIfFeeNet)} $</span></div>`);
-        rows.push(`<div class="kv"><span class="k">예상 1 XP당 비용</span><span class="v num">${d4(whatIfCostPerXp)} $/XP</span></div>`);
-      }
-      
-      $("out").innerHTML = `<div class="space-y-1 fade-in">${rows.join("")}</div>`;
-
-      _lastResult = {
-        mode: mode==='perps' ? 'Perps' : 'Spot', tier: FEES[mode].tiers[tierIdx].name, makerFee, takerFee, boost,
-        usedVol, usedPts, xpEfficiency, volPerXp, feeGross, avgFeeRate, takerShareVal, rebateRate, rebateAmt, feeNet, costPerXp
-      };
-      updateFeeHint();
-    }
-
-    function copyResultToClipboard(){
-      if (!_lastResult){ compute(); if(!_lastResult) return; }
-      // (This function can be updated to include the new info if desired, but is left as is for now)
-      const r=_lastResult;
-      const takerLine = (r.takerShareVal==null) ? "— (수수료 입력 필요)" : `${d2(r.takerShareVal*100)} %`;
-      const lines=[
-        `=== Basedapp Simulator — 결과 요약 ===`, `모드: ${r.mode} · ${r.tier} · Boost ${r.boost}%`, `수수료(M/T): ${(r.makerFee*100).toFixed(3)}% / ${(r.takerFee*100).toFixed(3)}%`, ``,
-        `사용 거래량: ${d2(r.usedVol)} $`, `획득 XP: ${d2(r.usedPts)} XP`, `XP 효율: ${d4(r.xpEfficiency)} XP/$`, `1 XP당 거래량: ${d4(r.volPerXp)} $/XP`, ``,
-        `총 수수료(리베이트 전): ${d2(r.feeGross)} $`, `평균 수수료율: ${d4(r.avgFeeRate*100)} %`, `추정 Taker 비중: ${takerLine}`,
-        `셀프레퍼럴 수익(${Math.round(r.rebateRate*100)}%): ${d2(r.rebateAmt)} $`, `실제 낸 수수료(리베이트 후): ${d2(r.feeNet)} $`,
-        `1 XP당 실질 비용(수수료만): ${d4(r.costPerXp)} $/XP`
-      ].join('\n');
-      const done=()=>{ const b=$("copy"); const t=b.textContent; b.textContent="복사됨 ✅"; setTimeout(()=>b.textContent=t,1200); };
-      if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(lines).then(done).catch(console.error); }
-      else { const ta=document.createElement('textarea'); ta.value=lines; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }
-    }
-
-    async function saveResultAsPng(){
-      if(!_lastResult){ compute(); if(!_lastResult) return; }
-      const wrap = document.createElement('div'); wrap.className = 'export-wrap';
-      const card = document.createElement('div'); card.className = 'export-card'; wrap.appendChild(card);
-      const head = document.createElement('div'); head.className = 'export-title';
-      const h = document.createElement('div'); h.textContent = '결과'; h.style.fontWeight = '700'; h.style.fontSize = '18px'; head.appendChild(h);
-      const badges = document.createElement('div'); badges.className = 'export-badges';
-      const b1 = document.createElement('span'); b1.className='export-badge'; b1.textContent = document.getElementById('modeBadge').textContent;
-      const b2 = document.createElement('span'); b2.className='export-badge'; b2.textContent = document.getElementById('feeBadge').textContent;
-      badges.appendChild(b1); badges.appendChild(b2); head.appendChild(badges); card.appendChild(head);
-      const out = document.getElementById('out');
-      if(!out || !out.firstChild){ compute(); }
-      const tmp = document.createElement('div'); tmp.innerHTML = out.innerHTML;
-      tmp.querySelectorAll('.kv').forEach(el=>{
-        el.className = 'export-kv';
-        const k = el.querySelector('.k'); if(k){ k.className='export-k'; }
-        const v = el.querySelector('.v'); if(v){ v.className='export-v num'; }
-      });
-      tmp.querySelectorAll('[style*="var(--ok)"]').forEach(el=>{ el.classList.add('text-ok'); el.removeAttribute('style'); });
-      tmp.querySelectorAll('[style*="var(--danger)"]').forEach(el=>{ el.classList.add('text-danger'); el.removeAttribute('style'); });
-      tmp.querySelectorAll('hr').forEach(hr=>{ const d=document.createElement('div'); d.className='export-hr'; hr.replaceWith(d); });
-      card.appendChild(tmp);
-      const foot = document.createElement('div'); foot.style.color='#c9d1db'; foot.style.fontSize='11px'; foot.style.marginTop='6px';
-      foot.textContent = '평균 수수료율은 기본적으로 Maker만 가정합니다. 총 수수료(누적 차이)를 입력하면 평균 수수료율과 추정 Taker 비중을 역산해 참고로 제공합니다. 리베이트 60%는 결과에서만 적용됩니다.';
-      card.appendChild(foot);
-      document.body.appendChild(wrap);
-      const canvas=await html2canvas(wrap,{ backgroundColor:'#0e0f12', scale:2, useCORS:true });
-      const dataURL=canvas.toDataURL('image/png');
-      const a=document.createElement('a'); a.href=dataURL; a.download='basedapp_Simulator_result.png';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a); document.body.removeChild(wrap);
-      const b=$("saveImg"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200);
-    }
-
-    const KEYS=["mode","boost","tier","prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross","startCapital"];
-    const saveInputs=()=>{ const obj={}; KEYS.forEach(k=>obj[k]=$(k).value); localStorage.setItem("basedapp_Simulator_v2",JSON.stringify(obj)); };
-    function loadInputs(){
-      const raw=localStorage.getItem("basedapp_Simulator_v2"); if(!raw) return;
-      try{ const obj=JSON.parse(raw); if(obj.mode) $("mode").value=obj.mode; populateTier();
-        KEYS.forEach(k=>{ if(obj[k]!==undefined && k!=="mode") $(k).value=obj[k]; }); updateFeeHint();
-      }catch(e){}
-    }
-    function resetAll(){
-      ["prevVol","currVol","prevPts","currPts","prevFeeGross","currFeeGross","startCapital"].forEach(id=>$(id).value="");
-      $("boost").value="60"; $("mode").value="perps"; populateTier(); $("out").innerHTML=""; _lastResult=null;
-    }
-
-    $("calc").addEventListener("click", compute);
-    $("save").addEventListener("click", ()=>{ saveInputs(); const b=$("save"); const t=b.textContent; b.textContent="저장됨 ✅"; setTimeout(()=>b.textContent=t,1200); });
-    $("reset").addEventListener("click", ()=>{ resetAll(); saveInputs(); });
-    $("copy").addEventListener("click", copyResultToClipboard);
-    $("saveImg").addEventListener("click", saveResultAsPng);
-
-    // 실시간 자동 계산 리스너 추가
-    KEYS.forEach(id => {
-        const el = $(id);
-        if(el.tagName === 'SELECT'){
-            el.addEventListener('change', compute);
-        } else {
-            el.addEventListener('input', compute);
+        const baseXP_rate = XP_PER_DOLLAR_BASE[mode];
+        const boostedXP_rate = baseXP_rate * (1 + boost / 100);
+        const neededVol = boostedXP_rate > 0 ? targetXp / boostedXP_rate : 0;
+        
+        let tradeCountText = "—";
+        if (startCapital > 0 && leverage > 0) {
+            const positionSize = startCapital * leverage;
+            const neededTrades = positionSize > 0 ? neededVol / positionSize : 0;
+            tradeCountText = `${d2(neededTrades)} 회`;
         }
-    });
+        
+        const totalFeePaid = neededVol * (mode === 'perps' ? FEES.perps.total_maker : FEES.spot.total_maker_avg);
+        const builderFeePaid = neededVol * BUILDER_FEE_RATES[mode];
+        const hyperliquidFeePaid = totalFeePaid - builderFeePaid;
+        const rebateAmt = builderFeePaid * 0.60;
+        const netFeePaid = totalFeePaid - rebateAmt;
 
-    // 초기화 및 첫 계산 실행
-    populateTier();
-    loadInputs();
-    compute();
+        const rows = [
+            `<div class="kv text-lg"><span class="k">목표 XP</span><span class="v num text-ok">${d2(targetXp)} XP</span></div>`,
+            `<hr class="my-2 border-[#2b2f36]" />`,
+            `<div class="kv"><span class="k">필요 총 거래량</span><span class="v num">${d2(neededVol)} $</span></div>`,
+            `<div class="kv"><span class="k">필요 거래 횟수</span><span class="v num">${tradeCountText}</span></div>`,
+            `<hr class="my-2 border-[#2b2f36]" />`,
+            `<h4 class="text-sm muted font-semibold pt-2">예상 수수료 상세</h4>`,
+            `<div class="kv"><span class="k">총 수수료 (하이퍼리퀴드+빌더)</span><span class="v num">${d2(totalFeePaid)} $</span></div>`,
+            `<div class="kv ml-4"><span class="k text-xs">└ 하이퍼리퀴드 수수료</span><span class="v num text-xs">${d2(hyperliquidFeePaid)} $</span></div>`,
+            `<div class="kv ml-4"><span class="k text-xs">└ 빌더 수수료</span><span class="v num text-xs">${d2(builderFeePaid)} $</span></div>`,
+            `<div class="kv"><span class="k">리베이트 (빌더피의 60%)</span><span class="v num text-ok">${d2(rebateAmt)} $</span></div>`,
+            `<div class="kv"><span class="k">최종 지불 수수료</span><span class="v num text-danger">${d2(netFeePaid)} $</span></div>`
+        ];
+        $('out').innerHTML = `<div class="space-y-1">${rows.join("")}</div>`;
+    }
+
+    function runAnalyzer() {
+        const prevVol = Number($("prevVol").value || 0);
+        const currVol = Number($("currVol").value || 0);
+        const usedVol = Math.max(0, currVol - prevVol);
+        const mode = $('checkMode').value;
+        const boost = Number($('checkBoost').value || 0);
+
+        if (usedVol <= 0) { $('out').innerHTML = `<div class="text-sm muted">이전/현재 거래량을 입력해주세요.</div>`; return; }
+        
+        const baseXP_rate = XP_PER_DOLLAR_BASE[mode];
+        const xpEarned = usedVol * baseXP_rate * (1 + boost / 100);
+        const totalFeePaid = usedVol * (mode === 'perps' ? FEES.perps.total_maker : FEES.spot.total_maker_avg);
+        const builderFeePaid = usedVol * BUILDER_FEE_RATES[mode];
+        const hyperliquidFeePaid = totalFeePaid - builderFeePaid;
+        const rebateAmt = builderFeePaid * 0.60;
+        const netFeePaid = totalFeePaid - rebateAmt;
+        const costPerXp = xpEarned > 0 ? (netFeePaid / xpEarned) : 0;
+        const volPerXp = xpEarned > 0 ? (usedVol / xpEarned) : 0;
+
+        const summaryCard = `
+            <div class="card rounded-xl p-3 bg-[#101217] border-[var(--border)] space-y-2 mb-4">
+                <div class="kv text-lg"><span class="k">총 획득 XP</span><span class="v num text-ok">${d2(xpEarned)} XP</span></div>
+                <div class="kv"><span class="k">총 실질 비용</span><span class="v num text-danger">${d2(netFeePaid)} $</span></div>
+                <div class="kv"><span class="k">1 XP당 비용</span><span class="v num text-danger">${d_auto(costPerXp)} $</span></div>
+            </div>`;
+        const detailRows = [
+            `<h4 class="text-sm muted font-semibold pt-2">거래 분석 상세</h4>`,
+            `<div class="kv"><span class="k">사용 거래량</span><span class="v num">${d2(usedVol)} $</span></div>`,
+            `<div class="kv"><span class="k">1 XP당 필요 거래량</span><span class="v num">${d_auto(volPerXp)} $</span></div>`,
+            `<hr class="my-2 border-[#2b2f36]" />`,
+            `<h4 class="text-sm muted font-semibold pt-2">수수료 상세</h4>`,
+            `<div class="kv"><span class="k">총 수수료 (하이퍼리퀴드+빌더)</span><span class="v num">${d2(totalFeePaid)} $</span></div>`,
+            `<div class="kv ml-4"><span class="k text-xs">└ 하이퍼리퀴드 수수료</span><span class="v num text-xs">${d2(hyperliquidFeePaid)} $</span></div>`,
+            `<div class="kv ml-4"><span class="k text-xs">└ 빌더 수수료</span><span class="v num text-xs">${d2(builderFeePaid)} $</span></div>`,
+            `<div class="kv"><span class="k">리베이트 (빌더피의 60%)</span><span class="v num text-ok">${d2(rebateAmt)} $</span></div>`,
+            `<div class="kv"><span class="k">최종 지불 수수료</span><span class="v num text-danger">${d2(netFeePaid)} $</span></div>`
+        ];
+        $('out').innerHTML = summaryCard + `<div class="space-y-1">${detailRows.join("")}</div>`;
+    }
+    
+    function switchTab(tabName) {
+        const isSim = tabName === 'simulator';
+        $('tabSimulator').classList.toggle('active', isSim);
+        $('tabAnalyzer').classList.toggle('active', !isSim);
+        $('simulatorInputs').classList.toggle('hidden', !isSim);
+        $('analyzerInputs').classList.toggle('hidden', isSim);
+        $('out').innerHTML = '';
+    }
+    
+    function toggleLeverage() {
+        $('simLeverageWrapper').style.display = $('simMode').value === 'perps' ? 'block' : 'none';
+    }
+
+    const themeToggle = $('theme-toggle');
+    const lightIcon = $('theme-icon-light');
+    const darkIcon = $('theme-icon-dark');
+    const docEl = document.documentElement;
+
+    function applyTheme(theme) {
+        if (theme === 'light') {
+            docEl.setAttribute('data-theme', 'light');
+            lightIcon.classList.add('hidden');
+            darkIcon.classList.remove('hidden');
+        } else {
+            docEl.setAttribute('data-theme', 'dark');
+            lightIcon.classList.remove('hidden');
+            darkIcon.classList.add('hidden');
+        }
+    }
+
+    function toggleTheme() {
+        const currentTheme = docEl.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('theme', newTheme);
+        applyTheme(newTheme);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleLeverage();
+        
+        $('tabSimulator').addEventListener('click', () => switchTab('simulator'));
+        $('tabAnalyzer').addEventListener('click', () => switchTab('analyzer'));
+        
+        $('simulateBtn').addEventListener('click', runSimulation);
+        $('analyzeBtn').addEventListener('click', runAnalyzer);
+        
+        $('simMode').addEventListener('change', toggleLeverage);
+        themeToggle.addEventListener('click', toggleTheme);
+        
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(savedTheme);
+        
+        $('out').innerHTML = `<div class="text-sm muted">원하는 작업을 선택하고 값을 입력해주세요.</div>`;
+    });
   </script>
 </body>
 </html>
-
