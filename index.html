@@ -6,7 +6,6 @@
   <title>Basedapp Simulator & Analyzer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* 다크 모드 (기본) */
     :root {
       color-scheme: dark;
       --bg: #0e0f12; --panel: #16181d; --border: #242833;
@@ -15,7 +14,6 @@
       --ring: 0 0 0 3px rgba(255,106,61,.35);
       --input-bg: #101217;
     }
-    /* 라이트 모드 */
     [data-theme='light'] {
       color-scheme: light;
       --bg: #f0f2f5; --panel: #ffffff; --border: #dcdfe3;
@@ -33,6 +31,7 @@
       background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main);
       border-radius: 12px; padding: .65rem .8rem; width: 100%;
     }
+    input[type="radio"]{ width:auto; margin-right: 0.5rem; }
     input:focus,select:focus{ outline: none; box-shadow: var(--ring); border-color: var(--accent); }
     .num{ font-variant-numeric: tabular-nums; }
     .kv{ display: flex; gap: .5rem; align-items: baseline; }
@@ -66,20 +65,27 @@
       
       <div id="simulatorInputs" class="space-y-4 pt-4">
         <p class="text-sm muted">목표 XP를 달성하기 위한 거래량과 횟수를 계산합니다.</p>
-        <div class="grid lg:grid-cols-2 gap-x-6 gap-y-4">
-            <div class="space-y-4">
-                <label class="block"><span class="block text-xs muted">목표 XP</span><input id="targetXp" type="number" step="100" placeholder="50000"></label>
-            </div>
-            <div class="space-y-4">
+        <div class="grid sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
                 <label class="block"><span class="block text-xs muted">거래 방식</span><select id="simMode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select></label>
+                <div id="simPupSelector" class="hidden mt-2">
+                    <span class="block text-xs muted">토큰 종류</span>
+                    <div class="flex items-center gap-4 text-sm mt-2">
+                        <label class="flex items-center"><input type="radio" name="simSpotType" value="normal" checked> 일반</label>
+                        <label class="flex items-center"><input type="radio" name="simSpotType" value="pup"> $PUP (2.25배)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="block"><span class="block text-xs muted">시작 자금 ($)</span><input id="simStartCapital" type="number" step="0.01" placeholder="1000"></label>
+                <div id="simLeverageWrapper"><label class="block"><span class="block text-xs muted">레버리지</span><input id="simLeverage" type="number" value="10" step="1"></label></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="block"><span class="block text-xs muted">목표 XP</span><input id="targetXp" type="number" step="100" placeholder="50000"></label>
                 <label class="block"><span class="block text-xs muted">XP 부스트</span><select id="simBoost"><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="60" selected>60%</option></select></label>
             </div>
         </div>
-        <div class="grid lg:grid-cols-2 gap-x-6 gap-y-4 pt-4 border-t border-[var(--border)]">
-            <label class="block"><span class="block text-xs muted">시작 자금 ($)</span><input id="simStartCapital" type="number" step="0.01" placeholder="1000"></label>
-            <div id="simLeverageWrapper"><label class="block"><span class="block text-xs muted">레버리지</span><input id="simLeverage" type="number" value="10" step="1"></label></div>
-        </div>
-        <button id="simulateBtn" class="w-full btn-accent p-2 rounded-xl font-semibold mt-2">시뮬레이션 실행</button>
+        <button id="simulateBtn" class="w-full btn-accent p-2 rounded-xl font-semibold mt-4">시뮬레이션 실행</button>
       </div>
 
       <div id="analyzerInputs" class="hidden space-y-4 pt-4">
@@ -92,7 +98,16 @@
                 </div>
             </div>
             <div class="space-y-4">
-                <label class="block"><span class="block text-xs muted">거래 방식</span><select id="checkMode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select></label>
+                <div>
+                    <label class="block"><span class="block text-xs muted">거래 방식</span><select id="checkMode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select></label>
+                    <div id="checkPupSelector" class="hidden mt-2">
+                        <span class="block text-xs muted">토큰 종류</span>
+                        <div class="flex items-center gap-4 text-sm mt-2">
+                            <label class="flex items-center"><input type="radio" name="checkSpotType" value="normal" checked> 일반</label>
+                            <label class="flex items-center"><input type="radio" name="checkSpotType" value="pup"> $PUP (2.25배)</label>
+                        </div>
+                    </div>
+                </div>
                 <label class="block"><span class="block text-xs muted">XP 부스트</span><select id="checkBoost"><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="60" selected>60%</option></select></label>
             </div>
         </div>
@@ -106,6 +121,12 @@
     </section>
   </main>
   
+  <footer class="mt-6 py-4 border-t border-[var(--border)] text-center text-sm text-[var(--muted)]">
+    2025 Brought to you by
+    <a href="https://twitter.com/no_gongju" target="_blank" rel="noopener"
+       class="ml-1 text-[var(--accent)] hover:underline">@no_gongju</a>
+  </footer>
+
   <script>
     const FEES = { 
         perps: { total_maker: 0.0004 },
@@ -116,32 +137,38 @@
         spot: 0.0005 
     };
     const XP_PER_DOLLAR_BASE = {
-        perps: 0.03375,
-        spot: 0.3038 
+        perps: 0.02525,
+        spot_normal: 0.101,
+        spot_pup: 0.22725
     };
 
     const $ = (id) => document.getElementById(id);
     const d2 = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const d_auto = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 4 });
     
+    function getBaseXpRate(mode, spotType) {
+        if (mode === 'perps') return XP_PER_DOLLAR_BASE.perps;
+        return spotType === 'pup' ? XP_PER_DOLLAR_BASE.spot_pup : XP_PER_DOLLAR_BASE.spot_normal;
+    }
+
     function runSimulation() {
-        const targetXp = Number($('targetXp').value || 0);
         const mode = $('simMode').value;
+        const spotType = document.querySelector('input[name="simSpotType"]:checked').value;
+        const baseXP_rate = getBaseXpRate(mode, spotType);
+        const targetXp = Number($('targetXp').value || 0);
         const boost = Number($('simBoost').value || 0);
         const startCapital = Number($('simStartCapital').value || 0);
         const leverage = mode === 'perps' ? Number($('simLeverage').value || 1) : 1;
         
         if (targetXp <= 0) { $('out').innerHTML = `<div class="text-sm muted">목표 XP를 입력해주세요.</div>`; return; }
 
-        const baseXP_rate = XP_PER_DOLLAR_BASE[mode];
         const boostedXP_rate = baseXP_rate * (1 + boost / 100);
         const neededVol = boostedXP_rate > 0 ? targetXp / boostedXP_rate : 0;
         
         let tradeCountText = "—";
         if (startCapital > 0 && leverage > 0) {
             const positionSize = startCapital * leverage;
-            const neededTrades = positionSize > 0 ? neededVol / positionSize : 0;
-            tradeCountText = `${d2(neededTrades)} 회`;
+            tradeCountText = positionSize > 0 ? `${d2(neededVol / positionSize)} 회` : "—";
         }
         
         const totalFeePaid = neededVol * (mode === 'perps' ? FEES.perps.total_maker : FEES.spot.total_maker_avg);
@@ -152,10 +179,10 @@
 
         const rows = [
             `<div class="kv text-lg"><span class="k">목표 XP</span><span class="v num text-ok">${d2(targetXp)} XP</span></div>`,
-            `<hr class="my-2 border-[#2b2f36]" />`,
+            `<hr class="my-2 border-[var(--border)]" />`,
             `<div class="kv"><span class="k">필요 총 거래량</span><span class="v num">${d2(neededVol)} $</span></div>`,
             `<div class="kv"><span class="k">필요 거래 횟수</span><span class="v num">${tradeCountText}</span></div>`,
-            `<hr class="my-2 border-[#2b2f36]" />`,
+            `<hr class="my-2 border-[var(--border)]" />`,
             `<h4 class="text-sm muted font-semibold pt-2">예상 수수료 상세</h4>`,
             `<div class="kv"><span class="k">총 수수료 (하이퍼리퀴드+빌더)</span><span class="v num">${d2(totalFeePaid)} $</span></div>`,
             `<div class="kv ml-4"><span class="k text-xs">└ 하이퍼리퀴드 수수료</span><span class="v num text-xs">${d2(hyperliquidFeePaid)} $</span></div>`,
@@ -167,15 +194,15 @@
     }
 
     function runAnalyzer() {
-        const prevVol = Number($("prevVol").value || 0);
-        const currVol = Number($("currVol").value || 0);
-        const usedVol = Math.max(0, currVol - prevVol);
         const mode = $('checkMode').value;
+        const spotType = document.querySelector('input[name="checkSpotType"]:checked').value;
+        const baseXP_rate = getBaseXpRate(mode, spotType);
+        
+        const usedVol = Math.max(0, Number($("currVol").value || 0) - Number($("prevVol").value || 0));
         const boost = Number($('checkBoost').value || 0);
 
         if (usedVol <= 0) { $('out').innerHTML = `<div class="text-sm muted">이전/현재 거래량을 입력해주세요.</div>`; return; }
         
-        const baseXP_rate = XP_PER_DOLLAR_BASE[mode];
         const xpEarned = usedVol * baseXP_rate * (1 + boost / 100);
         const totalFeePaid = usedVol * (mode === 'perps' ? FEES.perps.total_maker : FEES.spot.total_maker_avg);
         const builderFeePaid = usedVol * BUILDER_FEE_RATES[mode];
@@ -195,7 +222,7 @@
             `<h4 class="text-sm muted font-semibold pt-2">거래 분석 상세</h4>`,
             `<div class="kv"><span class="k">사용 거래량</span><span class="v num">${d2(usedVol)} $</span></div>`,
             `<div class="kv"><span class="k">1 XP당 필요 거래량</span><span class="v num">${d_auto(volPerXp)} $</span></div>`,
-            `<hr class="my-2 border-[#2b2f36]" />`,
+            `<hr class="my-2 border-[var(--border)]" />`,
             `<h4 class="text-sm muted font-semibold pt-2">수수료 상세</h4>`,
             `<div class="kv"><span class="k">총 수수료 (하이퍼리퀴드+빌더)</span><span class="v num">${d2(totalFeePaid)} $</span></div>`,
             `<div class="kv ml-4"><span class="k text-xs">└ 하이퍼리퀴드 수수료</span><span class="v num text-xs">${d2(hyperliquidFeePaid)} $</span></div>`,
@@ -215,8 +242,10 @@
         $('out').innerHTML = '';
     }
     
-    function toggleLeverage() {
-        $('simLeverageWrapper').style.display = $('simMode').value === 'perps' ? 'block' : 'none';
+    function toggleLeverage() { $('simLeverageWrapper').style.display = $('simMode').value === 'perps' ? 'block' : 'none'; }
+    function togglePupSelector() {
+        $('simPupSelector').style.display = $('simMode').value === 'spot' ? 'block' : 'none';
+        $('checkPupSelector').style.display = $('checkMode').value === 'spot' ? 'block' : 'none';
     }
 
     const themeToggle = $('theme-toggle');
@@ -225,39 +254,29 @@
     const docEl = document.documentElement;
 
     function applyTheme(theme) {
-        if (theme === 'light') {
-            docEl.setAttribute('data-theme', 'light');
-            lightIcon.classList.add('hidden');
-            darkIcon.classList.remove('hidden');
-        } else {
-            docEl.setAttribute('data-theme', 'dark');
-            lightIcon.classList.remove('hidden');
-            darkIcon.classList.add('hidden');
-        }
+        docEl.setAttribute('data-theme', theme);
+        lightIcon.classList.toggle('hidden', theme === 'light');
+        darkIcon.classList.toggle('hidden', theme === 'dark');
     }
 
     function toggleTheme() {
-        const currentTheme = docEl.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        const newTheme = docEl.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
         localStorage.setItem('theme', newTheme);
         applyTheme(newTheme);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         toggleLeverage();
-        
+        togglePupSelector();
         $('tabSimulator').addEventListener('click', () => switchTab('simulator'));
         $('tabAnalyzer').addEventListener('click', () => switchTab('analyzer'));
-        
         $('simulateBtn').addEventListener('click', runSimulation);
         $('analyzeBtn').addEventListener('click', runAnalyzer);
-        
-        $('simMode').addEventListener('change', toggleLeverage);
+        $('simMode').addEventListener('change', () => { toggleLeverage(); togglePupSelector(); });
+        $('checkMode').addEventListener('change', togglePupSelector);
         themeToggle.addEventListener('click', toggleTheme);
-        
         const savedTheme = localStorage.getItem('theme') || 'dark';
         applyTheme(savedTheme);
-        
         $('out').innerHTML = `<div class="text-sm muted">원하는 작업을 선택하고 값을 입력해주세요.</div>`;
     });
   </script>
