@@ -9,26 +9,33 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0e0f12; --panel: #16181d; --panel-solid:#121419; --border: #242833;
-      --text-main: #e8eaee; --text-muted: #98a2af; --accent: #ff6a3d;
-      --ok: #2ad7a3; --danger: #ff6b6b; --ring: 0 0 0 3px rgba(255,106,61,.35);
-      --input-bg: #101217;
+      --bg: #0e0f12; --panel: #16181d; --panel-solid:#121419;
+      --border: #242833; --text-main: #e8eaee; --text-muted: #98a2af;
+      --accent: #ff6a3d; --ok: #2ad7a3; --danger: #ff6b6b;
+      --ring: 0 0 0 3px rgba(255,106,61,.35); --input-bg: #101217;
     }
     [data-theme='light'] {
-      color-scheme: light;
-      --bg: #f0f2f5; --panel: #ffffff; --border: #dcdfe3;
-      --text-main: #1f2328; --text-muted: #656d76; --accent: #f56565;
-      --ok: #38a169; --danger: #e53e3e; --ring: 0 0 0 3px rgba(245,101,101,.35);
-      --input-bg: #f0f2f5;
-    }
+  color-scheme: light;
+  --bg: #f9f9fb;              /* 기본 배경 (밝은 톤) */
+  --panel: #ffffff;           /* 카드/패널 */
+  --border: #e5e7eb;          /* 테두리 */
+  --text-main: #1f2328;       /* 본문 텍스트 */
+  --text-muted: #6b7280;      /* 보조 텍스트 */
+
+  /* 주요 포인트 색상 (보라 + 블루) */
+  --accent: #4f46e5;          /* 버튼/강조 (보라 블루톤) */
+  --ok: #10b981;              /* 성공 (그린) */
+  --danger: #ef4444;          /* 에러/위험 (레드) */
+  --ring: 0 0 0 3px rgba(79,70,229,.35); /* 포커스 */
+  --input-bg: #f3f4f6;        /* 입력창 배경 */
+}
     body{ background: var(--bg); color: var(--text-main); transition: background .2s, color .2s; }
     .card{ background: var(--panel); border: 1px solid var(--border); }
     .muted{ color: var(--text-muted); }
     .btn-accent{ background: var(--accent); color: white; }
     .btn-accent:hover{ filter: brightness(1.05); }
     .btn-ghost{ background:var(--input-bg); border:1px solid var(--border); color:var(--text-main); }
-    input,select{ background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main);
-      border-radius: 12px; padding: .65rem .8rem; width: 100%; }
+    input,select{ background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); border-radius: 12px; padding: .65rem .8rem; width: 100%; }
     input[type="radio"]{ width:auto; margin-right: .5rem; }
     input:focus,select:focus{ outline: none; box-shadow: var(--ring); border-color: var(--accent); }
     .num{ font-variant-numeric: tabular-nums; }
@@ -36,24 +43,64 @@
     .kv .k{ min-width: 11.5rem; color: var(--text-muted); }
     .kv .v{ font-weight:700; }
     .badge{ background:var(--input-bg); border:1px solid var(--border); padding:.18rem .55rem; border-radius:999px; }
-    .text-ok{ color: var(--ok); } .text-danger{ color: var(--danger); }
+    .text-ok{ color: var(--ok); }
+    .text-danger{ color: var(--danger); }
     .tab{ padding:.5rem 1rem; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; transition:color .2s,border-color .2s; }
     .tab.active{ color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+    #resultCard #out {
+      margin-top: 0.25rem !important; /* 기존 mt-3(0.75rem) → 0.25rem로 축소 */
+    }
+
+    /* (선택) 결과 첫 행은 더 붙여 보이게 */
+    #resultCard #out .kv:first-child {
+      margin-top: 0 !important;
+}
   </style>
 </head>
 <body class="pb-28">
-  <header class="max-w-6xl mx-auto px-4 py-7 relative">
-    <div class="rounded-3xl border border-[var(--accent)]/60 p-3 mx-auto w-fit">
-      <div class="rounded-2xl px-5 py-3 bg-[var(--panel)] text-center">
-        <h1 class="text-2xl font-semibold">Basedapp Simulator & Analyzer</h1>
-      </div>
-    </div>
-    <button id="theme-toggle" class="absolute top-8 right-8 p-2 rounded-full bg-[var(--panel)] border border-[var(--border)]">
-      <svg id="theme-icon-light" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.706-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 7.072l.707-.707a1 1 0 10-1.414-1.414l-.707.707a1 1 0 101.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
-      <svg id="theme-icon-dark" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-    </button>
-  </header>
 
+  <!-- Header -->
+ <header class="max-w-6xl mx-auto px-4 py-7 flex items-center justify-between">
+  <!-- Title -->
+  <div class="rounded-3xl border border-[var(--accent)]/60 p-3">
+    <div class="rounded-2xl px-5 py-3 bg-[var(--panel)] text-center">
+      <h1 class="text-2xl font-semibold">Basedapp Simulator & Analyzer</h1>
+    </div>
+  </div>
+
+  <!-- Links + Theme -->
+  <div class="flex items-center gap-3">
+    <!-- Basedapp link (profile image) -->
+    <a href="https://app.based.one/r/ANDREW2" target="_blank" rel="noopener"
+       class="p-0.5 rounded-full border border-[var(--border)] bg-[var(--panel)] hover:brightness-110"
+       title="Open Basedapp">
+      <img src="https://pbs.twimg.com/profile_images/1945707037322575872/clYVc-L2_400x400.jpg"
+           alt="Basedapp" class="w-8 h-8 rounded-full object-cover"/>
+    </a>
+
+    <!-- Upheaval link (profile image) -->
+    <a href="https://upheaval.fi/portfolio?ref=ANDREW2" target="_blank" rel="noopener"
+       class="p-0.5 rounded-full border border-[var(--border)] bg-[var(--panel)] hover:brightness-110"
+       title="Open Upheaval">
+      <img src="https://pbs.twimg.com/profile_images/1943206624879087617/U01ngr77_400x400.jpg"
+           alt="Upheaval" class="w-8 h-8 rounded-full object-cover"/>
+    </a>
+
+    <!-- Theme toggle -->
+    <button id="theme-toggle"
+      class="p-2 rounded-full bg-[var(--panel)] border border-[var(--border)]">
+      <svg id="theme-icon-light" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.706-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 7.072l.707-.707a1 1 0 10-1.414-1.414l-.707.707a1 1 0 101.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>
+      </svg>
+      <svg id="theme-icon-dark" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+
+  <!-- Main -->
   <main class="max-w-6xl mx-auto px-4 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
     <div class="space-y-6">
       <section class="card rounded-2xl p-4 space-y-4">
@@ -68,8 +115,12 @@
           <div class="grid sm:grid-cols-2 gap-x-6 gap-y-4">
             <div class="space-y-4">
               <div class="grid grid-cols-2 gap-3">
-                <label class="block"><span class="block text-xs muted">거래 방식</span>
-                  <select id="simMode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select>
+                <label class="block">
+                  <span class="block text-xs muted">거래 방식</span>
+                  <select id="simMode">
+                    <option value="perps">선물 (Perps)</option>
+                    <option value="spot">현물 (Spot)</option>
+                  </select>
                 </label>
                 <div id="simPupSelector" class="hidden">
                   <span class="block text-xs muted">토큰 종류</span>
@@ -80,11 +131,21 @@
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <!-- number -> text (자동 쉼표용) -->
-                <label class="block"><span class="block text-xs muted">시작 자금 ($)</span><input id="simStartCapital" type="text" placeholder="1,000"></label>
-                <div id="simLeverageWrapper"><label class="block"><span class="block text-xs muted">레버리지</span><input id="simLeverage" type="text" value="10"></label></div>
+                <label class="block">
+                  <span class="block text-xs muted">시작 자금 ($)</span>
+                  <input id="simStartCapital" type="text" inputmode="decimal" placeholder="1,000" data-commify>
+                </label>
+                <div id="simLeverageWrapper">
+                  <label class="block">
+                    <span class="block text-xs muted">레버리지</span>
+                    <input id="simLeverage" type="number" value="10" step="1" min="1">
+                  </label>
+                </div>
               </div>
-              <label class="block"><span class="block text-xs muted">목표 XP</span><input id="targetXp" type="text" placeholder="50,000"></label>
+              <label class="block">
+                <span class="block text-xs muted">목표 XP</span>
+                <input id="targetXp" type="text" inputmode="numeric" placeholder="50,000" data-commify>
+              </label>
             </div>
             <div class="space-y-4">
               <div>
@@ -97,8 +158,12 @@
               <div id="simTierWrapper">
                 <label class="block"><span class="block text-xs muted">수수료 Tier</span><select id="simTier"></select></label>
               </div>
-              <label class="block"><span class="block text-xs muted">XP 부스트</span>
-                <select id="simBoost"><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="60" selected>60%</option></select>
+              <label class="block">
+                <span class="block text-xs muted">XP 부스트</span>
+                <select id="simBoost">
+                  <option value="0">0%</option><option value="25">25%</option>
+                  <option value="50">50%</option><option value="60" selected>60%</option>
+                </select>
               </label>
             </div>
           </div>
@@ -121,8 +186,12 @@
           <div class="grid sm:grid-cols-2 gap-x-6 gap-y-4">
             <div class="space-y-4">
               <div class="grid grid-cols-2 gap-3">
-                <label class="block"><span class="block text-xs muted">거래 방식</span>
-                  <select id="checkMode"><option value="perps">선물 (Perps)</option><option value="spot">현물 (Spot)</option></select>
+                <label class="block">
+                  <span class="block text-xs muted">거래 방식</span>
+                  <select id="checkMode">
+                    <option value="perps">선물 (Perps)</option>
+                    <option value="spot">현물 (Spot)</option>
+                  </select>
                 </label>
                 <div id="checkPupSelector" class="hidden">
                   <span class="block text-xs muted">토큰 종류</span>
@@ -133,16 +202,16 @@
                 </div>
               </div>
 
-              <!-- 거래량 입력 (number -> text) -->
+              <!-- 거래량 입력 -->
               <div id="anVolInputs" class="grid grid-cols-2 gap-3">
-                <label class="block"><span class="block text-xs muted">이전 거래량 (누적, $)</span><input id="prevVol" type="text"></label>
-                <label class="block"><span class="block text-xs muted">현재 거래량 (누적, $)</span><input id="currVol" type="text"></label>
+                <label class="block"><span class="block text-xs muted">이전 거래량 (누적, $)</span><input id="prevVol" type="text" inputmode="decimal" data-commify></label>
+                <label class="block"><span class="block text-xs muted">현재 거래량 (누적, $)</span><input id="currVol" type="text" inputmode="decimal" data-commify></label>
               </div>
 
-              <!-- XP 입력 (number -> text) -->
+              <!-- XP 입력 -->
               <div id="anXpInputs" class="grid grid-cols-2 gap-3 hidden">
-                <label class="block"><span class="block text-xs muted">이전 XP (누적)</span><input id="prevXp" type="text"></label>
-                <label class="block"><span class="block text-xs muted">현재 XP (누적)</span><input id="currXp" type="text"></label>
+                <label class="block"><span class="block text-xs muted">이전 XP (누적)</span><input id="prevXp" type="text" inputmode="numeric" data-commify></label>
+                <label class="block"><span class="block text-xs muted">현재 XP (누적)</span><input id="currXp" type="text" inputmode="numeric" data-commify></label>
               </div>
             </div>
 
@@ -157,8 +226,12 @@
               <div id="checkTierWrapper">
                 <label class="block"><span class="block text-xs muted">수수료 Tier</span><select id="checkTier"></select></label>
               </div>
-              <label class="block"><span class="block text-xs muted">XP 부스트</span>
-                <select id="checkBoost"><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="60" selected>60%</option></select>
+              <label class="block">
+                <span class="block text-xs muted">XP 부스트</span>
+                <select id="checkBoost">
+                  <option value="0">0%</option><option value="25">25%</option>
+                  <option value="50">50%</option><option value="60" selected>60%</option>
+                </select>
               </label>
             </div>
           </div>
@@ -194,10 +267,18 @@
           <li>수수료: 하이퍼리퀴드/빌더/리베이트/최종지불 상세</li>
         </ul>
       </section>
+      <hr class="my-3 border-[var(--border)]" />
+      <section class="space-y-2">
+        <h4 class="text-sm font-semibold muted">같이 보면 좋은 사이트</h4>
+        <ul class="list-disc pl-5 text-sm leading-6">
+          <li><a href="https://based.siriuslabs.xyz/" target="_blank" class="text-[var(--accent)] hover:underline">Based One Points Leaderboard (SiriusLabs)</a></li>
+          <li><a href="https://based.harim.cloud/" target="_blank" class="text-[var(--accent)] hover:underline">Based Dashboard</a></li>
+        </ul>
+      </section>
     </aside>
   </main>
 
-  <!-- 모바일 도움말 -->
+  <!-- 모바일 도움말 토글 -->
   <button id="helpToggle" class="fixed bottom-6 right-6 z-40 lg:hidden rounded-full p-3 border" style="background:var(--panel); border-color:var(--border);">❓</button>
   <aside id="helpPanelMobile" class="hidden fixed bottom-24 right-4 z-40 w-[86%] max-w-sm card rounded-2xl p-4">
     <div class="flex items-center justify-between"><h3 class="font-semibold">도움말 & 업데이트</h3><button id="helpClose" class="text-sm muted">닫기</button></div>
@@ -211,13 +292,17 @@
     </section>
   </aside>
 
+  <!-- Footer -->
   <footer class="mt-10 py-4 border-t border-[var(--border)] text-center text-sm text-[var(--muted)]">
-    2025 Brought to you by
-    <a href="https://twitter.com/no_gongju" target="_blank" rel="noopener" class="ml-1 text-[var(--accent)] hover:underline">@no_gongju</a>
-  </footer>
+  Developed & Maintained by 
+  <a href="https://twitter.com/no_gongju" target="_blank" rel="noopener" class="ml-1 text-[var(--accent)] hover:underline">X: @no_gongju</a> · 
+  <a href="https://t.me/nogongju" target="_blank" rel="noopener" class="ml-1 text-[var(--accent)] hover:underline">TG: @nogongju</a><br/>
+  <span class="muted text-xs">Last updated: 2025-09-19 03:33am(UTC+9) </span>
+</footer>
 
-  <script>
-    /* ===== Constants ===== */
+
+  <script>  
+/* ===== Constants ===== */
     const FEES = {
       perps: { base_rate: [
         { name: "Tier 0(<5M)", taker: 0.00045, maker: 0.00015 },
@@ -254,41 +339,33 @@
     const d_auto = (n) => Number(nz(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 6 });
     let lastResultForExport = null;
 
-    // ------ 자동 쉼표 유틸 ------
-    function formatNumberInput(input) {
-      // 소수점 1개만 허용, 숫자/점 이외 제거
-      let v = input.value.replace(/,/g, '').replace(/[^\d.]/g, '');
-      const parts = v.split('.');
-      if (parts.length > 2) {
-        v = parts[0] + '.' + parts.slice(1).join('');
-      }
-      if (v === '' || v === '.') { input.value = v; return; }
-      const num = Number(v);
-      if (!isNaN(num)) {
-        // 소수점 유지
-        const [intPart, decPart] = v.split('.');
-        input.value = Number(intPart).toLocaleString() + (decPart !== undefined ? '.' + decPart : '');
-      }
+    // ------- 자동 쉼표 입력 (data-commify) -------
+    function toNumber(raw) {
+      if (typeof raw !== 'string') return Number(raw || 0);
+      const clean = raw.replace(/,/g, '').trim();
+      if (clean === '' || clean === '-' || clean === '.') return 0;
+      return Number(clean);
     }
-    function readNum(id) {
-      const el = $(id);
-      if (!el) return 0;
-      const raw = (el.value || '').toString().replace(/,/g, '');
-      const n = Number(raw);
-      return isNaN(n) ? 0 : n;
+    function commify(x, opts={max:2}) {
+      const n = Number(x || 0);
+      return n.toLocaleString(undefined, { maximumFractionDigits: opts.max });
     }
-    function wireNumericFormatting(ids) {
-      ids.forEach(id => {
-        const el = $(id);
-        if (!el) return;
-        el.addEventListener('input', () => formatNumberInput(el));
-        // 포커스 아웃 시 앞뒤 불필요한 점 제거
-        el.addEventListener('blur', () => {
-          let raw = el.value.replace(/,/g, '');
-          if (raw === '' || raw === '.') { el.value = ''; return; }
-          const n = Number(raw);
-          if (!isNaN(n)) el.value = n.toLocaleString();
+    function attachCommifyInputs() {
+      document.querySelectorAll('input[data-commify]').forEach((el) => {
+        // 초기값 포맷
+        if (el.value) el.value = commify(toNumber(el.value), {max: 6});
+        // 입력 시 포맷
+        el.addEventListener('input', (e) => {
+          const caret = el.selectionStart;
+          const before = el.value;
+          const num = toNumber(before);
+          const formatted = commify(num, {max: 6});
+          el.value = formatted;
+          // 캐럿 보정 (간단히 끝으로)
+          el.setSelectionRange(el.value.length, el.value.length);
         });
+        // 포커스 시 전체 선택 (편의)
+        el.addEventListener('focus', () => el.select());
       });
     }
 
@@ -301,7 +378,12 @@
       const tierSelect = $(`${prefix}Tier`);
       tierSelect.innerHTML = '';
       const feeData = (mode === 'spot') ? FEES.spot.base_rate : FEES.perps.base_rate;
-      feeData.forEach((t,i)=>{ const o=document.createElement('option'); o.value=String(i); o.textContent=t.name; tierSelect.appendChild(o); });
+      feeData.forEach((t,i)=>{
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = t.name; // (필요 시 "Tier 0 — ≥$X" 같이 확장 가능)
+        tierSelect.appendChild(o);
+      });
     }
 
     /* === Fee helpers (고정식) === */
@@ -326,11 +408,11 @@
       const mode = $('simMode').value;
       const spotType = (mode==='spot') ? document.querySelector('input[name="simSpotType"]:checked').value : 'normal';
       const boost = Number($('simBoost').value || 0);
-      const startCapital = readNum('simStartCapital');
-      const leverage = mode==='perps' ? Math.max(1, readNum('simLeverage') || 1) : 1;
+      const startCapital = toNumber($('simStartCapital').value || 0);
+      const leverage = mode==='perps' ? Math.max(1, Number($('simLeverage').value || 1)) : 1;
       const orderType = document.querySelector('input[name="simOrderType"]:checked').value;
       const tier = Number($('simTier').value || 0);
-      const targetXp = readNum('targetXp');
+      const targetXp = toNumber($('targetXp').value || 0);
       if (targetXp <= 0){ $('out').innerHTML = `<div class="text-sm muted">목표 XP를 입력해주세요.</div>`; return; }
 
       const boosted = getBaseXpRate(mode, spotType) * (1 + boost/100);
@@ -389,23 +471,23 @@
 
       const inputMode = getAnalyzerInputMode();
       if (inputMode === 'volume'){
-        const prevVol = readNum('prevVol');
-        const currVol = readNum('currVol');
+        const prevVol = toNumber($('prevVol').value || 0);
+        const currVol = toNumber($('currVol').value || 0);
         usedVol = Math.max(0, currVol - prevVol);
         if (usedVol <= 0){ $('out').innerHTML = `<div class="text-sm muted">이전/현재 거래량을 입력해주세요.</div>`; return; }
         xp = usedVol * boostedRate;
       } else if (inputMode === 'xp'){
-        const prevXp = readNum('prevXp');
-        const currXp = readNum('currXp');
+        const prevXp = toNumber($('prevXp').value || 0);
+        const currXp = toNumber($('currXp').value || 0);
         const gainedXp = Math.max(0, currXp - prevXp);
         if (gainedXp <= 0){ $('out').innerHTML = `<div class="text-sm muted">이전/현재 XP를 입력해주세요.</div>`; return; }
         xp = gainedXp;
         usedVol = boostedRate > 0 ? (gainedXp / boostedRate) : 0;
       } else { // mixed
-        const prevVol = readNum('prevVol');
-        const currVol = readNum('currVol');
-        const prevXp = readNum('prevXp');
-        const currXp = readNum('currXp');
+        const prevVol = toNumber($('prevVol').value || 0);
+        const currVol = toNumber($('currVol').value || 0);
+        const prevXp = toNumber($('prevXp').value || 0);
+        const currXp = toNumber($('currXp').value || 0);
         usedVol = Math.max(0, currVol - prevVol);
         const gainedXp = Math.max(0, currXp - prevXp);
         if (usedVol <= 0 || gainedXp <= 0){ $('out').innerHTML = `<div class="text-sm muted">혼합 모드에서는 거래량과 XP 모두의 이전/현재 값을 입력해주세요.</div>`; return; }
@@ -424,10 +506,9 @@
         usedVol, xp,
         totalFeePaid: fee.total, builderFeePaid: fee.builder, hyperliquidFeePaid: fee.hyper,
         rebateAmt: fee.rebate, netFeePaid: fee.net,
-        costPerXp: xp>0 ? (fee.net/xp) : 0, 
+        costPerXp: xp>0 ? (fee.net/xp) : 0,
         volPerXp:  xp>0 ? (usedVol/xp) : 0,
-        expectedXp, efficiency,
-        theoCostPerXp
+        expectedXp, efficiency, theoCostPerXp
       };
       updateResultHeader(p); renderAnalyzerResult(p);
     }
@@ -498,12 +579,64 @@
         const btn=$('copyBtn'); const t=btn.textContent; btn.textContent='복사됨 ✅'; setTimeout(()=>btn.textContent=t,1200);
       });
     }
-    async function saveResultAsPng(){
-      const node=$('resultCard'); if(!node||!lastResultForExport) return;
-      const canvas=await html2canvas(node,{backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),scale:2,useCORS:true});
-      const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='basedapp_result.png'; a.click();
-      const btn=$('pngBtn'); const t=btn.textContent; btn.textContent='저장됨 ✅'; setTimeout(()=>btn.textContent=t,1200);
-    }
+   async function saveResultAsPng() {
+  const node = $('resultCard');
+  if (!node || !lastResultForExport) return;
+
+  const bg = getComputedStyle(document.documentElement)
+    .getPropertyValue('--bg')
+    .trim();
+
+  const canvas = await html2canvas(node, {
+    backgroundColor: bg,
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    removeContainer: true,
+    // 캡처 전용 스타일 다이어트
+    onclone: (doc) => {
+      const root = doc.querySelector('#resultCard');
+      if (!root) return;
+
+      // 카드 안쪽 여백/라인 간격을 PNG에서만 더 타이트하게
+      const tighten = (sel, cb) =>
+        doc.querySelectorAll(sel).forEach(cb);
+
+      // 제목 아래 본문 시작 간격
+      const out = doc.querySelector('#resultCard #out');
+      if (out) out.style.marginTop = '4px';
+
+      // key-value 행 간격
+      tighten('#resultCard .kv', (el) => {
+        el.style.marginTop = '4px';
+        el.style.marginBottom = '4px';
+        el.style.lineHeight = '1.3';
+      });
+
+      // 구분선 위아래 간격
+      tighten('#resultCard hr', (el) => {
+        el.style.marginTop = '8px';
+        el.style.marginBottom = '8px';
+      });
+
+      // 작은 텍스트(설명) 줄간격도 약간 타이트하게
+      tighten('#resultCard .text-sm, #resultCard .muted', (el) => {
+        el.style.lineHeight = '1.35';
+      });
+    },
+  });
+
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'basedapp_result.png';
+  a.click();
+
+  const btn = $('pngBtn');
+  const t = btn.textContent;
+  btn.textContent = '저장됨 ✅';
+  setTimeout(() => (btn.textContent = t), 1200);
+}
+
 
     /* Theme & Boot */
     const themeToggle=$('theme-toggle'); const lightIcon=$('theme-icon-light'); const darkIcon=$('theme-icon-dark'); const docEl=document.documentElement;
@@ -511,23 +644,25 @@
     function toggleTheme(){ const next=docEl.getAttribute('data-theme')==='light'?'dark':'light'; localStorage.setItem('theme',next); applyTheme(next); }
 
     document.addEventListener('DOMContentLoaded', ()=>{
-      // 자동 쉼표 대상 바인딩
-      wireNumericFormatting([
-        'simStartCapital','simLeverage','targetXp',
-        'prevVol','currVol','prevXp','currXp'
-      ]);
-
+      // 초기 렌더
       toggleLeverage();
       toggleDynamicOptions('sim');
       toggleDynamicOptions('check');
       toggleAnalyzerInputMode();
+      attachCommifyInputs();
 
+      // 탭
       $('tabSimulator').addEventListener('click',()=>switchTab('simulator'));
       $('tabAnalyzer').addEventListener('click',()=>switchTab('analyzer'));
+
+      // 액션
       $('simulateBtn').addEventListener('click',runSimulation);
       $('analyzeBtn').addEventListener('click',runAnalyzer);
 
+      // 입력 모드 토글
       document.querySelectorAll('input[name="anInputMode"]').forEach(r=>r.addEventListener('change', toggleAnalyzerInputMode));
+
+      // 모드 변경
       ['sim','check'].forEach(prefix=>{
         $(`${prefix}Mode`).addEventListener('change',()=>{
           if(prefix==='sim') toggleLeverage();
@@ -540,6 +675,7 @@
       if(helpBtn&&helpPanel) helpBtn.addEventListener('click',()=>helpPanel.classList.toggle('hidden'));
       if(helpClose&&helpPanel) helpClose.addEventListener('click',()=>helpPanel.classList.add('hidden'));
 
+      // 기타
       themeToggle.addEventListener('click', toggleTheme);
       $('copyBtn').addEventListener('click', copyResultToClipboard);
       $('pngBtn').addEventListener('click', saveResultAsPng);
@@ -550,3 +686,8 @@
   </script>
 </body>
 </html>
+
+
+
+
+
